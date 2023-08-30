@@ -22,13 +22,15 @@ interface IProps {
     onDeployWebhook: (context: GitHubContext) => void;
     restoredApiKey: string;
     restored: boolean;
+    label: string;
 }
 
 const GitHubAuthButton = ({
     onAuth,
     onDeployWebhook,
     restoredApiKey,
-    restored
+    restored,
+    label
 }: IProps) => {
     const [repos, setRepos] = useState<GitHubRepo[]>([]);
     const [reposLoading, setReposLoading] = useState(false);
@@ -117,7 +119,7 @@ const GitHubAuthButton = ({
 
     // Disable webhook deployment button if the repo already exists
     useEffect(() => {
-        if (!chosenRepo || !gitHubUser || !gitHubToken) return;
+        if (!chosenRepo || !label || !gitHubUser || !gitHubToken) return;
 
         setLoading(true);
 
@@ -151,10 +153,10 @@ const GitHubAuthButton = ({
     };
 
     const deployWebhook = useCallback(() => {
-        if (!chosenRepo || deployed) return;
+        if (!chosenRepo || !label || deployed) return;
 
         const webhookSecret = `${uuid()}`;
-        saveGitHubContext(chosenRepo, webhookSecret, gitHubToken).catch(err =>
+        saveGitHubContext(chosenRepo, label, webhookSecret, gitHubToken).catch(err =>
             alert(`Error saving repo to DB: ${err}`)
         );
 
@@ -172,7 +174,7 @@ const GitHubAuthButton = ({
                 });
             })
             .catch(err => alert(`Error deploying webhook: ${err}`));
-    }, [gitHubToken, chosenRepo, deployed, gitHubUser]);
+    }, [gitHubToken, chosenRepo, label, deployed, gitHubUser]);
 
     return (
         <div className="center space-y-8 w-80">
@@ -192,7 +194,7 @@ const GitHubAuthButton = ({
                 )}
                 {!!gitHubToken && <CheckIcon className="w-6 h-6" />}
             </button>
-            {repos?.length > 0 && gitHubUser && restored && (
+            {repos?.length > 0 && gitHubUser && restored && label && (
                 <div className="flex flex-col w-full items-center space-y-4">
                     <Select
                         values={repos.map((repo: GitHubRepo) => ({
@@ -202,7 +204,7 @@ const GitHubAuthButton = ({
                         onChange={repoId =>
                             setChosenRepo(repos.find(repo => repo.id == repoId))
                         }
-                        placeholder="4. Find your repo"
+                        placeholder="5. Find your repo"
                         loading={reposLoading}
                     />
                     {chosenRepo && (

@@ -38,6 +38,7 @@ export const getGitHubAuthURL = (verificationCode: string): string => {
 
 export const saveGitHubContext = async (
     repo: GitHubRepo,
+    label: string,
     webhookSecret: string,
     token: string
 ) => {
@@ -63,7 +64,7 @@ export const saveGitHubContext = async (
         body: JSON.stringify({
             repoName: repo.name,
             label: {
-                name: LINEAR.GITHUB_LABEL,
+                name: label,
                 color: LINEAR.GITHUB_LABEL_COLOR
             }
         })

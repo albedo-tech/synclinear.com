@@ -86,6 +86,7 @@ export interface Sync {
     id: string;
     LinearTeam: { id: string; teamName: string };
     GitHubRepo: { id: string; repoName: string };
+    label: string;
 }
 
 export type MilestoneState = "open" | "closed";

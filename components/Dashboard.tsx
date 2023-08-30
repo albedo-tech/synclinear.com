@@ -84,7 +84,15 @@ const Dashboard = () => {
                             {sync.LinearTeam?.teamName}
                         </div>
                         <WidthIcon className="w-6 h-6" />
+                        <div className="font-semibold">
+                            Tag name:{' '}
+                        </div>
+                        <div>{sync.label}</div>
+                        <div>{' <> '}</div>
                         <div>
+                            <span className="font-semibold">
+                                Repository:{' '}
+                            </span>
                             <span>
                                 {sync.GitHubRepo?.repoName?.split("/")?.[0]}
                             </span>

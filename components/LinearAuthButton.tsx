@@ -25,13 +25,15 @@ interface IProps {
     onDeployWebhook: (context: LinearContext) => void;
     restoredApiKey: string;
     restored: boolean;
+    label: string;
 }
 
 const LinearAuthButton = ({
     onAuth,
     onDeployWebhook,
     restoredApiKey,
-    restored
+    restored,
+    label
 }: IProps) => {
     const [accessToken, setAccessToken] = useState("");
     const [teams, setTeams] = useState<Array<LinearTeam>>([]);
@@ -149,9 +151,9 @@ const LinearAuthButton = ({
     };
 
     const deployWebhook = useCallback(() => {
-        if (!chosenTeam || deployed) return;
+        if (!chosenTeam || !label || deployed) return;
 
-        saveLinearContext(accessToken, chosenTeam, ticketStates).catch(err =>
+        saveLinearContext(accessToken, chosenTeam, ticketStates, label).catch(err =>
             alert(`Error saving labels to DB: ${err}`)
         );
 
@@ -202,7 +204,7 @@ const LinearAuthButton = ({
                 )}
                 {!!accessToken && <CheckIcon className="w-6 h-6" />}
             </button>
-            {teams.length > 0 && restored && (
+            {teams.length > 0 && restored && label && (
                 <div className="flex flex-col items-center w-full space-y-4">
                     <Select
                         values={teams.map(team => ({
@@ -213,7 +215,7 @@ const LinearAuthButton = ({
                             setChosenTeam(teams.find(team => team.id === id))
                         }
                         disabled={loading}
-                        placeholder="3. Find your team"
+                        placeholder="4. Find your team"
                     />
                     {chosenTeam?.states?.nodes && (
                         <div className="w-full space-y-4 pb-4">

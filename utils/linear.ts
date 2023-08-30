@@ -278,23 +278,24 @@ export const updateLinearCycle = async (
 export const saveLinearContext = async (
     token: string,
     team: LinearTeam,
-    stateLabels: { [key in TicketState]: LinearObject }
+    stateLabels: { [key in TicketState]: LinearObject },
+    label: string
 ) => {
-    let publicLabel = team.labels?.nodes?.find?.(n => n.name === "Public");
+    let linearLabel = team.labels?.nodes?.find?.(n => n.name === label);
 
-    if (!publicLabel) {
+    if (!linearLabel) {
         const { data } = await createLinearLabel(
             token,
             team.id,
-            "Public",
+            label,
             "#2DA54E"
         );
 
         if (!data?.issueLabelCreate?.issueLabel) {
-            alert('Please create a Linear label called "Public"');
+            alert(`Please create a Linear label called "${label}"`);
         }
 
-        publicLabel = data?.issueLabelCreate?.issueLabel;
+        linearLabel = data?.issueLabelCreate?.issueLabel;
     }
 
     if (!stateLabels) {
@@ -305,7 +306,7 @@ export const saveLinearContext = async (
     const data = {
         teamId: team.id,
         teamName: team.name,
-        publicLabelId: publicLabel?.id,
+        publicLabelId: linearLabel?.id,
         toDoStateId: stateLabels["todo"]?.id,
         doneStateId: stateLabels["done"]?.id,
         canceledStateId: stateLabels["canceled"]?.id
