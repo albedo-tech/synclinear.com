@@ -314,9 +314,9 @@ export async function githubWebhookHandler(
     } else if (
         action === "opened" ||
         (action === "labeled" &&
-            body.label?.name?.toLowerCase() === LINEAR.GITHUB_LABEL)
+            body.label?.name?.toLowerCase() === sync.label)
     ) {
-        // Issue opened or special "linear" label added
+        // Issue opened or special sync.label label added
 
         if (syncedIssue) {
             const reason = `Not creating ticket as issue ${issue.number} already exists on Linear as ${syncedIssue.linearIssueNumber}.`;
