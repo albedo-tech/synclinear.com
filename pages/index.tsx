@@ -102,7 +102,7 @@ const index = () => {
                     <LinearAuthButton
                         restoredApiKey={linearContext.apiKey}
                         restored={restored}
-                        label={label}
+                        syncLabel={label}
                         onAuth={(apiKey: string) =>
                             setLinearContext({
                                 ...linearContext,
