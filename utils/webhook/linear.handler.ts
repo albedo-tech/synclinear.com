@@ -61,8 +61,14 @@ export async function linearWebhookHandler(
             : true;
         const isUserMatching =
             sync.linearUserId === (data.userId ?? data.creatorId);
+        // label matching
+        const isLinearLabelIdMatching =
+            data.labelIds.includes(sync.linearLabelId)
+        // matching by removed label
+        const isRemovedLabelMatching = updatedFrom ?
+            updatedFrom.labelIds.includes(sync.linearLabelId) : false
 
-        return isUserMatching && isTeamMatching;
+        return isUserMatching && isTeamMatching && (isLinearLabelIdMatching || isRemovedLabelMatching);
     });
 
     if (syncs.length === 0 || !sync) {
@@ -84,6 +90,7 @@ export async function linearWebhookHandler(
         githubApiKey,
         githubUserId,
         githubApiKeyIV,
+        githubLabelId,
         LinearTeam: { doneStateId, canceledStateId },
         GitHubRepo: { repoName: repoFullName, repoId }
     } = sync;
@@ -127,8 +134,8 @@ export async function linearWebhookHandler(
     });
 
     if (action === "update") {
-        // Label updated on an already-Public issue
-        if (updatedFrom.labelIds?.includes(publicLabelId)) {
+        // Label updated on an already-synclabel issue
+        if (updatedFrom.labelIds?.includes(sync.linearLabelId)) {
             if (!syncedIssue) {
                 console.log(skipReason("label", ticketName));
                 return skipReason("label", ticketName);
@@ -141,12 +148,12 @@ export async function linearWebhookHandler(
                 );
 
                 // Public label removed
-                if (removedLabelId === publicLabelId) {
+                if (removedLabelId === sync.linearLabelId) {
                     await prisma.syncedIssue.delete({
                         where: { id: syncedIssue.id }
                     });
 
-                    const reason = `Deleted synced issue ${ticketName} after Public label removed.`;
+                    const reason = `Deleted synced issue ${ticketName} after ${sync.label} label removed.`;
                     console.log(reason);
                     return reason;
                 }
@@ -221,8 +228,8 @@ export async function linearWebhookHandler(
             }
         } else if (
             updatedFrom.labelIds &&
-            !updatedFrom.labelIds?.includes(publicLabelId) &&
-            data.labelIds?.includes(publicLabelId)
+            !updatedFrom.labelIds?.includes(sync.linearLabelId) &&
+            data.labelIds?.includes(sync.linearLabelId)
         ) {
             // Public label added to an issue
             if (syncedIssue) {
@@ -342,10 +349,10 @@ export async function linearWebhookHandler(
             ] as Promise<any>[]);
 
             // Apply all labels to newly-created issue
-            const labelIds = data.labelIds.filter(id => id != publicLabelId);
+            const labelIds = data.labelIds.filter(id => id != sync.linearLabelId);
             const labelNames: string[] = [];
             for (const labelId of labelIds) {
-                if (labelId === publicLabelId) continue;
+                if (labelId === sync.linearLabelId) continue;
 
                 const label = await linear.issueLabel(labelId);
                 if (!label) {
@@ -967,7 +974,7 @@ export async function linearWebhookHandler(
         } else if (actionType === "Issue") {
             // Issue created
 
-            if (!data.labelIds?.includes(publicLabelId)) {
+            if (!data.labelIds?.includes(sync.linearLabelId)) {
                 const reason = "Issue is not labeled as public";
                 console.log(reason);
                 return reason;
@@ -1077,10 +1084,10 @@ export async function linearWebhookHandler(
             ] as Promise<any>[]);
 
             // Apply all labels to newly-created issue
-            const labelIds = data.labelIds.filter(id => id != publicLabelId);
+            const labelIds = data.labelIds.filter(id => id != sync.linearLabelId);
             const labelNames: string[] = [];
             for (const labelId of labelIds) {
-                if (labelId === publicLabelId) continue;
+                if (labelId === sync.linearLabelId) continue;
 
                 const label = await linear.issueLabel(labelId);
                 if (!label) {
