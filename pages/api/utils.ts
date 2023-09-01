@@ -169,7 +169,7 @@ export const createLabel = async ({
             json: {
                 name: label.name,
                 color: label.color?.replace("#", ""),
-                description: `Created by Linear-GitHub Sync for ${repoFullName}`
+                description: `Created by Linear-GitHub Sync`
             },
             headers: {
                 Authorization: githubAuthHeader,
