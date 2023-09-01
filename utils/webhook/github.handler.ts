@@ -103,12 +103,10 @@ export async function githubWebhookHandler(
         linearUserId,
         linearApiKey,
         linearApiKeyIV,
-        linearLabelId,
         githubUserId,
         githubApiKey,
         githubApiKeyIV,
         LinearTeam: {
-            publicLabelId,
             doneStateId,
             toDoStateId,
             canceledStateId,
@@ -315,7 +313,7 @@ export async function githubWebhookHandler(
     } else if (
         action === "opened" ||
         (action === "labeled" &&
-            body.label?.name?.toLowerCase() === sync.label)
+            body.label?.id === sync.githubLabelId)
     ) {
         // Issue opened or special sync.label label added
 
@@ -343,7 +341,7 @@ export async function githubWebhookHandler(
             title: issue.title,
             description: `${modifiedDescription ?? ""}`,
             teamId: linearTeamId,
-            labelIds: [publicLabelId],
+            labelIds: [sync.linearLabelId],
             ...(issue.assignee?.id &&
                 assignee && {
                     assigneeId: assignee.linearUserId
