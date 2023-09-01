@@ -80,10 +80,11 @@ export async function linearWebhookHandler(
         linearTeamId,
         linearApiKey,
         linearApiKeyIV,
+        linearLabelId,
         githubApiKey,
         githubUserId,
         githubApiKeyIV,
-        LinearTeam: { publicLabelId, doneStateId, canceledStateId },
+        LinearTeam: { doneStateId, canceledStateId },
         GitHubRepo: { repoName: repoFullName, repoId }
     } = sync;
 

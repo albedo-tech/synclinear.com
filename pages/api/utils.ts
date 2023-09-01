@@ -186,8 +186,28 @@ export const createLabel = async ({
         createdLabel.errors?.[0]?.code !== "already_exists"
     ) {
         error = true;
-    } else if (createdLabel.errors?.[0]?.code === "already_exists") {
-        return { error: false };
+    } else if (
+        createdLabelResponse.statusCode !== 200 &&
+        createdLabel.errors?.[0]?.code === "already_exists"
+    ) {
+        const githubLabelResponse = await got.get(
+            `${GITHUB.REPO_ENDPOINT}/${repoFullName}/labels/${label.name}`,
+            {
+                headers: {
+                    Authorization: githubAuthHeader,
+                    "User-Agent": userAgentHeader
+                },
+                throwHttpErrors: false
+            }
+        );
+
+        if (githubLabelResponse.statusCode === 200) {
+            const createdLabel = JSON.parse(githubLabelResponse.body);
+
+            return { createdLabel, error };
+        } else {
+            error = true;
+        }
     }
 
     return { createdLabel, error };

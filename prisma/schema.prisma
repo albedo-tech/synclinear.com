@@ -32,8 +32,6 @@ model LinearTeam {
     teamId   String @unique
     teamName String
 
-    publicLabelId String
-
     canceledStateId String
     doneStateId     String
     toDoStateId     String
@@ -72,11 +70,13 @@ model Sync {
     githubRepoId   Int
     githubApiKey   String
     githubApiKeyIV String
+    githubLabelId String
 
     LinearTeam     LinearTeam @relation(fields: [linearTeamId], references: [teamId])
     linearTeamId   String
     linearApiKey   String
     linearApiKeyIV String
+    linearLabelId String
 
     label String
 

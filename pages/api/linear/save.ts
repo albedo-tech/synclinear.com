@@ -16,10 +16,10 @@ export default async function handle(
     const {
         teamId,
         teamName,
-        publicLabelId,
         canceledStateId,
         doneStateId,
-        toDoStateId
+        toDoStateId,
+        linearLabelId
     } = JSON.parse(req.body);
 
     if (!teamId) {
@@ -31,7 +31,7 @@ export default async function handle(
             .status(400)
             .send({ error: "Failed to save team: missing team name" });
     } else if (
-        [publicLabelId, canceledStateId, doneStateId, toDoStateId].some(
+        [canceledStateId, doneStateId, toDoStateId].some(
             id => id === undefined
         )
     ) {
@@ -45,7 +45,6 @@ export default async function handle(
             where: { teamId: teamId },
             update: {
                 teamName,
-                publicLabelId,
                 canceledStateId,
                 doneStateId,
                 toDoStateId
@@ -53,14 +52,13 @@ export default async function handle(
             create: {
                 teamId,
                 teamName,
-                publicLabelId,
                 canceledStateId,
                 doneStateId,
                 toDoStateId
             }
         });
 
-        return res.status(200).json(result);
+        return res.status(200).json(linearLabelId);
     } catch (err) {
         return res.status(400).send({
             error: `Failed to save team with error: ${err.message || ""}`

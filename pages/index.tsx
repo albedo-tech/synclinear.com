@@ -56,7 +56,9 @@ const index = () => {
             );
         }
 
-        if (linearContext.teamId && gitHubContext.repoId && label) {
+        // console.log(linearContext.linearLabelId)
+        // console.log(gitHubContext.githubLabelId)
+        if (linearContext.teamId && gitHubContext.repoId && label && linearContext.linearLabelId && gitHubContext.githubLabelId) {
             saveSync(linearContext, gitHubContext, label)
                 .then(res => {
                     if (res.error) {

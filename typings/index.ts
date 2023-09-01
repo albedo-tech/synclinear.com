@@ -74,12 +74,14 @@ export interface LinearContext {
     userId: string;
     teamId: string;
     apiKey: string;
+    linearLabelId: string;
 }
 
 export interface GitHubContext {
     userId: string;
     repoId: string;
     apiKey: string;
+    githubLabelId: string;
 }
 
 export interface Sync {
@@ -87,6 +89,8 @@ export interface Sync {
     LinearTeam: { id: string; teamName: string };
     GitHubRepo: { id: string; repoName: string };
     label: string;
+    linearLabelId: string;
+    githubLabelId: string;
 }
 
 export type MilestoneState = "open" | "closed";

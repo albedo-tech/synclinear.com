@@ -306,10 +306,10 @@ export const saveLinearContext = async (
     const data = {
         teamId: team.id,
         teamName: team.name,
-        publicLabelId: linearLabel?.id,
         toDoStateId: stateLabels["todo"]?.id,
         doneStateId: stateLabels["done"]?.id,
-        canceledStateId: stateLabels["canceled"]?.id
+        canceledStateId: stateLabels["canceled"]?.id,
+        linearLabelId: linearLabel?.id,
     };
 
     const response = await fetch("/api/linear/save", {

@@ -35,6 +35,7 @@ const GitHubAuthButton = ({
     const [repos, setRepos] = useState<GitHubRepo[]>([]);
     const [reposLoading, setReposLoading] = useState(false);
     const [chosenRepo, setChosenRepo] = useState<GitHubRepo>();
+    const [githubLabelId, setGithubLabelId] = useState("");
     const [deployed, setDeployed] = useState(false);
     const [loading, setLoading] = useState(false);
 
@@ -130,7 +131,8 @@ const GitHubAuthButton = ({
                     onDeployWebhook({
                         userId: gitHubUser.id,
                         repoId: chosenRepo.id,
-                        apiKey: gitHubToken
+                        apiKey: gitHubToken,
+                        githubLabelId: githubLabelId
                     });
                 } else {
                     setDeployed(false);
@@ -141,7 +143,7 @@ const GitHubAuthButton = ({
                 alert(`Error checking for existing repo: ${err}`);
                 setLoading(false);
             });
-    }, [chosenRepo]);
+    }, [gitHubUser, chosenRepo, gitHubToken, label, githubLabelId]);
 
     const openAuthPage = () => {
         // Generate random code to validate against CSRF attack
@@ -156,8 +158,13 @@ const GitHubAuthButton = ({
         if (!chosenRepo || !label || deployed) return;
 
         const webhookSecret = `${uuid()}`;
-        saveGitHubContext(chosenRepo, label, webhookSecret, gitHubToken).catch(err =>
-            alert(`Error saving repo to DB: ${err}`)
+        saveGitHubContext(chosenRepo, webhookSecret, gitHubToken, label)
+            .then((res) => {
+                if (res.syncLabelData.createdLabel.id) {
+                    setGithubLabelId(res.syncLabelData.createdLabel.id.toString());
+                }
+            })
+            .catch(err => alert(`Error saving repo to DB: ${err}`)
         );
 
         setGitHubWebook(gitHubToken, chosenRepo, webhookSecret)
@@ -170,11 +177,12 @@ const GitHubAuthButton = ({
                 onDeployWebhook({
                     userId: gitHubUser.id,
                     repoId: chosenRepo.id,
-                    apiKey: gitHubToken
+                    apiKey: gitHubToken,
+                    githubLabelId: githubLabelId
                 });
             })
             .catch(err => alert(`Error deploying webhook: ${err}`));
-    }, [gitHubToken, chosenRepo, label, deployed, gitHubUser]);
+    }, [gitHubToken, chosenRepo, label, githubLabelId, deployed, gitHubUser]);
 
     return (
         <div className="center space-y-8 w-80">

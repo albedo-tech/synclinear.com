@@ -38,9 +38,9 @@ export const getGitHubAuthURL = (verificationCode: string): string => {
 
 export const saveGitHubContext = async (
     repo: GitHubRepo,
-    label: string,
     webhookSecret: string,
-    token: string
+    token: string,
+    label: string,
 ) => {
     const data = {
         repoId: repo.id,

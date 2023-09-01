@@ -103,6 +103,7 @@ export async function githubWebhookHandler(
         linearUserId,
         linearApiKey,
         linearApiKeyIV,
+        linearLabelId,
         githubUserId,
         githubApiKey,
         githubApiKeyIV,
