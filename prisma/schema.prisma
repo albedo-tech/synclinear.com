@@ -41,7 +41,20 @@ model LinearTeam {
     SyncedIssue SyncedIssue[]
     Milestone   Milestone[]
 
+    LinearTeamMember LinearTeamMember[]
+
     @@map("linear_teams")
+}
+
+model LinearTeamMember {
+    id String @id @default(cuid())
+
+    userId       String
+    LinearTeam   LinearTeam @relation(fields: [teamId], references: [teamId])
+    teamId String
+
+    @@unique([teamId, userId])
+    @@map("linear_team_members")
 }
 
 model GitHubRepo {

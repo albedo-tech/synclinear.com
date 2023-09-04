@@ -61,6 +61,7 @@ export interface LinearTeam extends LinearObject {
     key: string;
     labels: { nodes: LinearObject[] };
     states: { nodes: LinearState[] };
+    members: { nodes: LinearObject[] };
 }
 
 export type TicketState = keyof typeof LINEAR.TICKET_STATES;

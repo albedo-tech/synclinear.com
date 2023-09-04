@@ -55,6 +55,12 @@ export const getLinearContext = async (token: string) => {
                         name
                     }
                 }
+                members {
+                    nodes {
+                        id
+                        name
+                    }
+                }
             }
         }
         viewer {
@@ -309,13 +315,17 @@ export const saveLinearContext = async (
         toDoStateId: stateLabels["todo"]?.id,
         doneStateId: stateLabels["done"]?.id,
         canceledStateId: stateLabels["canceled"]?.id,
-        linearLabelId: linearLabel?.id,
+        members: team.members?.nodes
     };
 
     const response = await fetch("/api/linear/save", {
         method: "POST",
         body: JSON.stringify(data)
     });
+
+    if (response.status === 200) {
+        return linearLabel?.id
+    }
 
     return response.json();
 };

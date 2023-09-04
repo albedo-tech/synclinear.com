@@ -50,7 +50,8 @@ export default async function handle(
                             repoName: true
                         }
                     },
-                    label: true
+                    label: true,
+                    linearLabelId: true
                 }
             });
 
