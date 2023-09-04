@@ -19,11 +19,6 @@ const index = () => {
         useContext(Context);
     const [synced, setSynced] = useState(false);
     const [restored, setRestored] = useState(false);
-    const [label, setLabel] = useState('');
-
-    const handleChangeChosenTag = (event) => {
-        setLabel(event.target.value);
-    };
 
     // Load the saved context from localStorage
     useEffect(() => {
@@ -56,10 +51,8 @@ const index = () => {
             );
         }
 
-        // console.log(linearContext.linearLabelId)
-        // console.log(gitHubContext.githubLabelId)
-        if (linearContext.teamId && gitHubContext.repoId && label && linearContext.linearLabelId && gitHubContext.githubLabelId) {
-            saveSync(linearContext, gitHubContext, label)
+        if (linearContext.teamId && gitHubContext.repoId && linearContext.label && linearContext.linearLabelId) {
+            saveSync(linearContext, gitHubContext)
                 .then(res => {
                     if (res.error) {
                         alert(res.error);
@@ -83,7 +76,7 @@ const index = () => {
                     setSynced(false);
                 });
         }
-    }, [gitHubContext, linearContext, label]);
+    }, [gitHubContext, linearContext]);
 
     return (
         <div>
@@ -104,7 +97,6 @@ const index = () => {
                     <LinearAuthButton
                         restoredApiKey={linearContext.apiKey}
                         restored={restored}
-                        syncLabel={label}
                         onAuth={(apiKey: string) =>
                             setLinearContext({
                                 ...linearContext,
@@ -126,19 +118,10 @@ const index = () => {
                                 !!gitHubContext.repoId && !!linearContext.apiKey
                             }
                         />
-                        <div className="flex flex-col w-full items-center mt-6">
-                            <input
-                                type="text"
-                                className="border border-gray-300 bg-white text-gray-900 text-sm rounded-full block w-full px-6 py-4"
-                                placeholder="3. Create tag for sync"
-                                onChange={handleChangeChosenTag}
-                            />
-                        </div>
                     </div>
                     <GitHubAuthButton
                         restoredApiKey={gitHubContext.apiKey}
                         restored={restored}
-                        label={label}
                         onAuth={(apiKey: string) =>
                             setGitHubContext({
                                 ...gitHubContext,
@@ -155,8 +138,8 @@ const index = () => {
                 >
                     <h3 className="text-green-600">Synced!</h3>
                     <p>
-                        To test your connection, tag a Linear and GitHub issue as{" "}
-                        <code>{label}</code>:
+                        To test your connection, tag a Linear issue as{" "}
+                        <code>{linearContext.label}</code>:
                     </p>
                     <button onClick={() => window.open(LINEAR.APP_URL)}>
                         <span>Open Linear</span>

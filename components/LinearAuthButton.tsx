@@ -25,15 +25,13 @@ interface IProps {
     onDeployWebhook: (context: LinearContext) => void;
     restoredApiKey: string;
     restored: boolean;
-    syncLabel: string;
 }
 
 const LinearAuthButton = ({
     onAuth,
     onDeployWebhook,
     restoredApiKey,
-    restored,
-    syncLabel
+    restored
 }: IProps) => {
     const [accessToken, setAccessToken] = useState("");
     const [teams, setTeams] = useState<Array<LinearTeam>>([]);
@@ -45,6 +43,11 @@ const LinearAuthButton = ({
     const [user, setUser] = useState<LinearObject>();
     const [deployed, setDeployed] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [syncLabel, setSyncLabel] = useState('');
+
+    const handleChangeChosenTag = (event) => {
+        setSyncLabel(event.target.value);
+    };
 
     // If present, exchange the temporary auth code for an access token
     useEffect(() => {
@@ -118,6 +121,7 @@ const LinearAuthButton = ({
                         userId: user.id,
                         teamId: chosenTeam.id,
                         apiKey: accessToken,
+                        label: syncLabel,
                         linearLabelId: linearLabelId
                     });
                 } else {
@@ -129,7 +133,7 @@ const LinearAuthButton = ({
                 alert(`Error checking for existing labels: ${err}`);
                 setLoading(false);
             });
-    }, [chosenTeam, accessToken, user, linearLabelId]);
+    }, [chosenTeam, accessToken, user, syncLabel, linearLabelId]);
 
     // Populate default ticket states when available
     useEffect(() => {
@@ -170,6 +174,7 @@ const LinearAuthButton = ({
                     userId: user.id,
                     teamId: chosenTeam.id,
                     apiKey: accessToken,
+                    label: syncLabel,
                     linearLabelId: linearLabelId
                 });
             })
@@ -180,6 +185,7 @@ const LinearAuthButton = ({
                         userId: user.id,
                         teamId: chosenTeam.id,
                         apiKey: accessToken,
+                        label: syncLabel,
                         linearLabelId: linearLabelId
                     });
                     setDeployed(true);
@@ -217,6 +223,15 @@ const LinearAuthButton = ({
                 )}
                 {!!accessToken && <CheckIcon className="w-6 h-6" />}
             </button>
+            { !!accessToken && (<div className="flex flex-col w-full items-center mt-6">
+                <input
+                    type="text"
+                    className="border border-gray-300 bg-white text-gray-900 text-sm rounded-full block w-full px-6 py-4"
+                    placeholder="3. Create tag for sync"
+                    onChange={handleChangeChosenTag}
+                />
+            </div>
+            )}
             {teams.length > 0 && restored && syncLabel && (
                 <div className="flex flex-col items-center w-full space-y-4">
                     <Select

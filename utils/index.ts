@@ -92,12 +92,10 @@ export const legacySyncFooter = `From [Linear-GitHub Sync](https://synclinear.co
 export const saveSync = async (
     linearContext: LinearContext,
     githubContext: GitHubContext,
-    label: string
 ) => {
     const data = {
         github: { ...githubContext },
         linear: { ...linearContext },
-        label
     };
 
     const response = await fetch("/api/save", {

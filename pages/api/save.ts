@@ -15,9 +15,9 @@ export default async function handle(
         });
     }
     
-    const { github, linear, label } = JSON.parse(req.body);
+    const { github, linear } = JSON.parse(req.body);
+    const label = linear.label;
     const linearLabelId = linear.linearLabelId;
-    const githubLabelId = github.githubLabelId;
 
     // Check for each required field
     if (!github?.userId) {
@@ -40,14 +40,14 @@ export default async function handle(
         return res
             .status(404)
             .send({ error: "Failed to save sync: missing API key" });
-    } else if (!label) {
+    } else if (!linear?.label) {
         return res
             .status(404)
             .send({ error: "Failed to save sync: missing label" });
-    } else if (!linear.linearLabelId || !github.githubLabelId) {
+    } else if (!linear?.linearLabelId) {
         return res
             .status(404)
-            .send({ error: "Failed to save sync: missing label ids" });
+            .send({ error: "Failed to save sync: missing linear label id" });
     }
 
     // Encrypt the API keys
@@ -71,7 +71,6 @@ export default async function handle(
             update: {
                 githubApiKey,
                 githubApiKeyIV,
-                githubLabelId,
                 linearApiKey,
                 linearApiKeyIV,
                 linearLabelId,
@@ -83,7 +82,6 @@ export default async function handle(
                 githubRepoId: github.repoId,
                 githubApiKey,
                 githubApiKeyIV,
-                githubLabelId,
 
                 // Linear
                 linearUserId: linear.userId,

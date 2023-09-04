@@ -23,7 +23,9 @@ const ContextProvider = ({ children }: { children: React.ReactNode }) => {
     const [linearContext, setLinearContext] = useState<LinearContext>({
         userId: "",
         teamId: "",
-        apiKey: ""
+        apiKey: "",
+        label: "",
+        linearLabelId: ""
     });
     const [gitHubContext, setGitHubContext] = useState<GitHubContext>({
         userId: "",

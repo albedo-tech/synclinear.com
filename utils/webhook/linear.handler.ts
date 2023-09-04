@@ -90,7 +90,6 @@ export async function linearWebhookHandler(
         githubApiKey,
         githubUserId,
         githubApiKeyIV,
-        githubLabelId,
         LinearTeam: { doneStateId, canceledStateId },
         GitHubRepo: { repoName: repoFullName, repoId }
     } = sync;
@@ -135,7 +134,7 @@ export async function linearWebhookHandler(
 
     if (action === "update") {
         // Label updated on an already-synclabel issue
-        if (updatedFrom.labelIds?.includes(sync.linearLabelId)) {
+        if (updatedFrom.labelIds?.includes(linearLabelId)) {
             if (!syncedIssue) {
                 console.log(skipReason("label", ticketName));
                 return skipReason("label", ticketName);
@@ -148,7 +147,7 @@ export async function linearWebhookHandler(
                 );
 
                 // Public label removed
-                if (removedLabelId === sync.linearLabelId) {
+                if (removedLabelId === linearLabelId) {
                     await prisma.syncedIssue.delete({
                         where: { id: syncedIssue.id }
                     });
@@ -228,8 +227,8 @@ export async function linearWebhookHandler(
             }
         } else if (
             updatedFrom.labelIds &&
-            !updatedFrom.labelIds?.includes(sync.linearLabelId) &&
-            data.labelIds?.includes(sync.linearLabelId)
+            !updatedFrom.labelIds?.includes(linearLabelId) &&
+            data.labelIds?.includes(linearLabelId)
         ) {
             // Public label added to an issue
             if (syncedIssue) {
@@ -349,10 +348,10 @@ export async function linearWebhookHandler(
             ] as Promise<any>[]);
 
             // Apply all labels to newly-created issue
-            const labelIds = data.labelIds.filter(id => id != sync.linearLabelId);
+            const labelIds = data.labelIds.filter(id => id != linearLabelId);
             const labelNames: string[] = [];
             for (const labelId of labelIds) {
-                if (labelId === sync.linearLabelId) continue;
+                if (labelId === linearLabelId) continue;
 
                 const label = await linear.issueLabel(labelId);
                 if (!label) {
@@ -974,7 +973,7 @@ export async function linearWebhookHandler(
         } else if (actionType === "Issue") {
             // Issue created
 
-            if (!data.labelIds?.includes(sync.linearLabelId)) {
+            if (!data.labelIds?.includes(linearLabelId)) {
                 const reason = "Issue is not labeled as public";
                 console.log(reason);
                 return reason;
@@ -1084,10 +1083,10 @@ export async function linearWebhookHandler(
             ] as Promise<any>[]);
 
             // Apply all labels to newly-created issue
-            const labelIds = data.labelIds.filter(id => id != sync.linearLabelId);
+            const labelIds = data.labelIds.filter(id => id != linearLabelId);
             const labelNames: string[] = [];
             for (const labelId of labelIds) {
-                if (labelId === sync.linearLabelId) continue;
+                if (labelId === linearLabelId) continue;
 
                 const label = await linear.issueLabel(labelId);
                 if (!label) {

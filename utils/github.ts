@@ -40,7 +40,6 @@ export const saveGitHubContext = async (
     repo: GitHubRepo,
     webhookSecret: string,
     token: string,
-    label: string,
 ) => {
     const data = {
         repoId: repo.id,
@@ -64,7 +63,7 @@ export const saveGitHubContext = async (
         body: JSON.stringify({
             repoName: repo.name,
             label: {
-                name: label,
+                name: LINEAR.GITHUB_LABEL,
                 color: LINEAR.GITHUB_LABEL_COLOR
             }
         })
