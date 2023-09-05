@@ -19,6 +19,30 @@ const index = () => {
         useContext(Context);
     const [synced, setSynced] = useState(false);
     const [restored, setRestored] = useState(false);
+    const [syncLabel, setSyncLabel] = useState('');
+    const refresh = () => {
+        localStorage.clear();
+        setLinearContext({
+            userId: "",
+            teamId: "",
+            apiKey: "",
+            label: "",
+            linearLabelId: ""
+        })
+        setGitHubContext({
+            userId: "",
+            repoId: "",
+            apiKey: "",
+            label: "",
+            githubLabelId: ""
+        })
+
+        window.location.reload()
+    }
+
+    const handleChangeChosenTag = (event) => {
+        setSyncLabel(event.target.value);
+    };
 
     // Load the saved context from localStorage
     useEffect(() => {
@@ -69,7 +93,7 @@ const index = () => {
                         decay: 0.95
                     });
 
-                    localStorage.clear();
+                    setTimeout(refresh, 5000)
                 })
                 .catch(err => {
                     alert(err);
