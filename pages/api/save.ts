@@ -16,8 +16,9 @@ export default async function handle(
     }
     
     const { github, linear } = JSON.parse(req.body);
-    const label = linear.label;
     const linearLabelId = linear.linearLabelId;
+    const githubLabelId = github.githubLabelId;
+    const label = linear.label;
 
     // Check for each required field
     if (!github?.userId) {
@@ -48,6 +49,10 @@ export default async function handle(
         return res
             .status(404)
             .send({ error: "Failed to save sync: missing linear label id" });
+    } else if (!github?.githubLabelId) {
+        return res
+            .status(404)
+            .send({ error: "Failed to save sync: missing github label id" });
     }
 
     // Encrypt the API keys
@@ -71,6 +76,7 @@ export default async function handle(
             update: {
                 githubApiKey,
                 githubApiKeyIV,
+                githubLabelId,
                 linearApiKey,
                 linearApiKeyIV,
                 linearLabelId,
@@ -82,6 +88,7 @@ export default async function handle(
                 githubRepoId: github.repoId,
                 githubApiKey,
                 githubApiKeyIV,
+                githubLabelId,
 
                 // Linear
                 linearUserId: linear.userId,

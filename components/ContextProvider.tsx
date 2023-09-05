@@ -30,7 +30,9 @@ const ContextProvider = ({ children }: { children: React.ReactNode }) => {
     const [gitHubContext, setGitHubContext] = useState<GitHubContext>({
         userId: "",
         repoId: "",
-        apiKey: ""
+        apiKey: "",
+        label: "",
+        githubLabelId: ""
     });
 
     return (

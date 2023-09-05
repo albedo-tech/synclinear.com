@@ -40,6 +40,7 @@ export const saveGitHubContext = async (
     repo: GitHubRepo,
     webhookSecret: string,
     token: string,
+    label: string,
 ) => {
     const data = {
         repoId: repo.id,
@@ -63,7 +64,7 @@ export const saveGitHubContext = async (
         body: JSON.stringify({
             repoName: repo.name,
             label: {
-                name: LINEAR.GITHUB_LABEL,
+                name: label,
                 color: LINEAR.GITHUB_LABEL_COLOR
             }
         })
@@ -273,3 +274,15 @@ export const setIssueMilestone = async (
     return response;
 };
 
+export const checkUniqueLabelForGithubRepo = async (
+    repoId: string,
+    label: string,
+): Promise<any> => {
+    const response = await fetch("/api/github/check", {
+        method: "POST",
+        body: JSON.stringify({ repoId, label }),
+        headers: { "Content-Type": "application/json" }
+    });
+
+    return await response.json();
+};

@@ -91,7 +91,7 @@ export const legacySyncFooter = `From [Linear-GitHub Sync](https://synclinear.co
 
 export const saveSync = async (
     linearContext: LinearContext,
-    githubContext: GitHubContext,
+    githubContext: GitHubContext
 ) => {
     const data = {
         github: { ...githubContext },

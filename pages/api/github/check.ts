@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import prisma from "../../../prisma";
 
-// POST /api/linear/label
+// POST /api/github/check
 export default async function handle(
     req: NextApiRequest,
     res: NextApiResponse
@@ -16,15 +16,15 @@ export default async function handle(
     }
 
     const {
-        teamId,
+        repoId,
         label
     } = req.body;
 
     // Check for each required field
-    if (!teamId) {
+    if (!repoId) {
         return res
             .status(404)
-            .send({ error: "Failed to check label: missing Linear team ID" });
+            .send({ error: "Failed to check label: missing GH repo ID" });
     } else if (!label) {
         return res
             .status(404)
@@ -33,7 +33,7 @@ export default async function handle(
 
     const sync = await prisma.sync.findFirst({
         where: {
-            linearTeamId: teamId,
+            githubRepoId: repoId,
             label
         },
     });
@@ -41,10 +41,10 @@ export default async function handle(
     if (!sync) {
         return res.status(200).send({checkingResult: true});
     } else {
-        console.log("Error checking label: label is not unique for team");
+        console.log("Error checking label: label is not unique for GH repo");
         return res.status(404).send({
             checkingResult: false,
-            error: "Failed to check label with error: label is not unique for team"
+            error: "Failed to check label with error: label is not unique for GH repo"
         });
     }
 }

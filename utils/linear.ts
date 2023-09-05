@@ -368,7 +368,7 @@ export const checkUniqueLabelForTeam = async (
     teamId: string,
     label: string,
 ): Promise<any> => {
-    const response = await fetch("/api/linear/label", {
+    const response = await fetch("/api/linear/check", {
         method: "POST",
         body: JSON.stringify({ teamId, label }),
         headers: { "Content-Type": "application/json" }

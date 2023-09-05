@@ -26,13 +26,15 @@ interface IProps {
     onDeployWebhook: (context: LinearContext) => void;
     restoredApiKey: string;
     restored: boolean;
+    syncLabel: string;
 }
 
 const LinearAuthButton = ({
     onAuth,
     onDeployWebhook,
     restoredApiKey,
-    restored
+    restored,
+    syncLabel
 }: IProps) => {
     const [accessToken, setAccessToken] = useState("");
     const [teams, setTeams] = useState<Array<LinearTeam>>([]);
@@ -44,12 +46,7 @@ const LinearAuthButton = ({
     const [user, setUser] = useState<LinearObject>();
     const [deployed, setDeployed] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [syncLabel, setSyncLabel] = useState('');
     const [isUniqueSyncLabelForTeam, setIsUniqueSyncLabelForTeam] = useState(false);
-
-    const handleChangeChosenTag = (event) => {
-        setSyncLabel(event.target.value);
-    };
 
     useEffect(() => {
         if (!syncLabel || !chosenTeam) return;
@@ -62,7 +59,7 @@ const LinearAuthButton = ({
                 }
             }
         ).catch(err => {
-            alert(`Error checking label: ${err}`);
+            // alert(`Error checking label: ${err}`);
             setIsUniqueSyncLabelForTeam(false);
         });
     },[syncLabel, chosenTeam])
@@ -175,7 +172,7 @@ const LinearAuthButton = ({
     };
 
     const deployWebhook = useCallback(() => {
-        if (!chosenTeam || !syncLabel || deployed) return;
+        if (!chosenTeam || !syncLabel) return;
 
         saveLinearContext(accessToken, chosenTeam, ticketStates, syncLabel)
             .then((labelId) => {
@@ -241,15 +238,6 @@ const LinearAuthButton = ({
                 )}
                 {!!accessToken && <CheckIcon className="w-6 h-6" />}
             </button>
-            { !!accessToken && (<div className="flex flex-col w-full items-center mt-6">
-                <input
-                    type="text"
-                    className="border border-gray-300 bg-white text-gray-900 text-sm rounded-full block w-full px-6 py-4"
-                    placeholder="3. Create tag for sync"
-                    onChange={handleChangeChosenTag}
-                />
-            </div>
-            )}
             {teams.length > 0 && restored && syncLabel && (
                 <div className="flex flex-col items-center w-full space-y-4">
                     <Select

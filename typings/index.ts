@@ -83,6 +83,8 @@ export interface GitHubContext {
     userId: string;
     repoId: string;
     apiKey: string;
+    label: string;
+    githubLabelId: string;
 }
 
 export interface Sync {

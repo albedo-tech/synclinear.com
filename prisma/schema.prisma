@@ -83,6 +83,7 @@ model Sync {
     githubRepoId   Int
     githubApiKey   String
     githubApiKeyIV String
+    githubLabelId String
 
     LinearTeam     LinearTeam @relation(fields: [linearTeamId], references: [teamId])
     linearTeamId   String

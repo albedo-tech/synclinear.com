@@ -1,0 +1,23 @@
+diff a/components/GitHubAuthButton.tsx b/components/GitHubAuthButton.tsx	(rejected hunks)
+@@ -22,20 +22,17 @@
+     onDeployWebhook: (context: GitHubContext) => void;
+     restoredApiKey: string;
+     restored: boolean;
+-    label: string;
+ }
+ 
+ const GitHubAuthButton = ({
+     onAuth,
+     onDeployWebhook,
+     restoredApiKey,
+-    restored,
+-    label
++    restored
+ }: IProps) => {
+     const [repos, setRepos] = useState<GitHubRepo[]>([]);
+     const [reposLoading, setReposLoading] = useState(false);
+     const [chosenRepo, setChosenRepo] = useState<GitHubRepo>();
+-    const [githubLabelId, setGithubLabelId] = useState("");
+     const [deployed, setDeployed] = useState(false);
+     const [loading, setLoading] = useState(false);
+ 

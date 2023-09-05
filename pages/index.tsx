@@ -51,7 +51,7 @@ const index = () => {
             );
         }
 
-        if (linearContext.teamId && gitHubContext.repoId && linearContext.label && linearContext.linearLabelId) {
+        if (linearContext.teamId && linearContext.linearLabelId && gitHubContext.repoId && gitHubContext.githubLabelId) {
             saveSync(linearContext, gitHubContext)
                 .then(res => {
                     if (res.error) {
@@ -103,6 +103,7 @@ const index = () => {
                                 apiKey
                             })
                         }
+                        syncLabel={syncLabel}
                         onDeployWebhook={setLinearContext}
                     />
                     <div className="flex sm:center h-20 sm:h-fit sm:w-56 shrink gap-4">
@@ -118,6 +119,16 @@ const index = () => {
                                 !!gitHubContext.repoId && !!linearContext.apiKey
                             }
                         />
+                        {linearContext.apiKey && gitHubContext.apiKey && (
+                            <div className="flex flex-col w-full items-center mt-6">
+                                <input
+                                    type="text"
+                                    className="border border-gray-300 bg-white text-gray-900 text-sm rounded-full block w-full px-6 py-4"
+                                    placeholder="3. Create tag for sync"
+                                    onChange={handleChangeChosenTag}
+                                />
+                            </div>
+                        )}
                     </div>
                     <GitHubAuthButton
                         restoredApiKey={gitHubContext.apiKey}
@@ -128,6 +139,7 @@ const index = () => {
                                 apiKey
                             })
                         }
+                        syncLabel={syncLabel}
                         onDeployWebhook={setGitHubContext}
                     />
                 </div>
@@ -139,7 +151,7 @@ const index = () => {
                     <h3 className="text-green-600">Synced!</h3>
                     <p>
                         To test your connection, tag a Linear issue as{" "}
-                        <code>{linearContext.label}</code>:
+                        <code>{syncLabel}</code>:
                     </p>
                     <button onClick={() => window.open(LINEAR.APP_URL)}>
                         <span>Open Linear</span>
