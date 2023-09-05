@@ -16,7 +16,8 @@ import {
     checkTeamWebhook,
     getLinearAuthURL,
     saveLinearContext,
-    setLinearWebhook
+    setLinearWebhook,
+    checkUniqueLabelForTeam
 } from "../utils/linear";
 import Select from "./Select";
 
@@ -44,10 +45,27 @@ const LinearAuthButton = ({
     const [deployed, setDeployed] = useState(false);
     const [loading, setLoading] = useState(false);
     const [syncLabel, setSyncLabel] = useState('');
+    const [isUniqueSyncLabelForTeam, setIsUniqueSyncLabelForTeam] = useState(false);
 
     const handleChangeChosenTag = (event) => {
         setSyncLabel(event.target.value);
     };
+
+    useEffect(() => {
+        if (!syncLabel || !chosenTeam) return;
+
+        checkUniqueLabelForTeam(chosenTeam.id, syncLabel).then(
+            res => {
+                setIsUniqueSyncLabelForTeam(res.checkingResult);
+                if (!res.checkingResult) {
+                    alert(res.error)
+                }
+            }
+        ).catch(err => {
+            alert(`Error checking label: ${err}`);
+            setIsUniqueSyncLabelForTeam(false);
+        });
+    },[syncLabel, chosenTeam])
 
     // If present, exchange the temporary auth code for an access token
     useEffect(() => {
@@ -282,7 +300,7 @@ const LinearAuthButton = ({
                             )}
                         </div>
                     )}
-                    {chosenTeam && (
+                    {chosenTeam && isUniqueSyncLabelForTeam && (
                         <DeployButton
                             disabled={missingTicketState}
                             loading={loading}

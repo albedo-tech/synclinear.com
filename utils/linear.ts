@@ -364,6 +364,19 @@ export const checkTeamWebhook = async (
     return await response.json();
 };
 
+export const checkUniqueLabelForTeam = async (
+    teamId: string,
+    label: string,
+): Promise<any> => {
+    const response = await fetch("/api/linear/label", {
+        method: "POST",
+        body: JSON.stringify({ teamId, label }),
+        headers: { "Content-Type": "application/json" }
+    });
+
+    return await response.json();
+};
+
 // Open a Linear ticket for the creator to authenticate with this app
 export const inviteMember = async (
     memberId: string,
