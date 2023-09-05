@@ -1024,6 +1024,9 @@ export async function linearWebhookHandler(
                 },
                 json: {
                     title: `[${ticketName}] ${data.title}`,
+                    labels: [
+                        sync.label,
+                    ],
                     body: `${
                         modifiedDescription ?? ""
                     }\n\n<sub>${getSyncFooter()} | [${ticketName}](${url})</sub>`,
