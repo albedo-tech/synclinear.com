@@ -179,7 +179,7 @@ export const createLabel = async ({
         }
     );
 
-    const createdLabel = JSON.parse(createdLabelResponse.body);
+    let createdLabel = JSON.parse(createdLabelResponse.body);
 
     if (
         createdLabelResponse.statusCode > 201 &&
@@ -202,7 +202,7 @@ export const createLabel = async ({
         );
 
         if (githubLabelResponse.statusCode === 200) {
-            const createdLabel = JSON.parse(githubLabelResponse.body);
+            createdLabel = JSON.parse(githubLabelResponse.body);
 
             return { createdLabel, error };
         } else {
