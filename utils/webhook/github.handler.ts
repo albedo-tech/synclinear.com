@@ -1,14 +1,8 @@
 import prisma from "../../prisma";
-import { createHmac, timingSafeEqual } from "crypto";
-import {
-    decrypt,
-    formatJSON,
-    getAttachmentQuery,
-    getSyncFooter,
-    skipReason
-} from "../index";
-import { LinearClient } from "@linear/sdk";
-import { prepareMarkdownContent, upsertUser } from "../../pages/api/utils";
+import {createHmac, timingSafeEqual} from "crypto";
+import {decrypt, formatJSON, getAttachmentQuery, getSyncFooter, skipReason} from "../index";
+import {LinearClient} from "@linear/sdk";
+import {prepareMarkdownContent, upsertUser} from "../../pages/api/utils";
 import {
     Issue,
     IssueCommentCreatedEvent,
@@ -21,15 +15,11 @@ import {
     Repository,
     User
 } from "@octokit/webhooks-types";
-import {
-    createLinearCycle,
-    generateLinearUUID,
-    updateLinearCycle
-} from "../linear";
-import { LINEAR, SHARED } from "../constants";
+import {createLinearCycle, generateLinearUUID, updateLinearCycle} from "../linear";
+import {LINEAR, SHARED} from "../constants";
 import got from "got";
-import { linearQuery } from "../apollo";
-import { ApiError } from "../errors";
+import {linearQuery} from "../apollo";
+import {ApiError} from "../errors";
 
 export async function githubWebhookHandler(
     body: IssuesEvent | IssueCommentCreatedEvent | MilestoneEvent,
@@ -38,9 +28,10 @@ export async function githubWebhookHandler(
 ) {
     const { repository, sender, action } = body;
 
-    let sync =
-        !!repository?.id && !!sender?.id
-            ? await prisma.sync.findFirst({
+    const { issue }: IssuesEvent = body as unknown as IssuesEvent;
+
+    let syncs = !!repository?.id && !!sender?.id ?
+        await prisma.sync.findMany({
                   where: {
                       githubRepoId: repository.id,
                       githubUserId: sender.id
@@ -49,8 +40,12 @@ export async function githubWebhookHandler(
                       GitHubRepo: true,
                       LinearTeam: true
                   }
-              })
-            : null;
+              }) : null;
+
+    let sync = syncs !== null ? syncs.find(sync => {
+        // label matching
+        return issue.labels.map(l => l.name).includes(sync.label);
+    }) : null;
 
     if (
         (!sync?.LinearTeam || !sync?.GitHubRepo) &&
@@ -60,13 +55,11 @@ export async function githubWebhookHandler(
         throw new ApiError("Could not find issue's corresponding team.", 404);
     }
 
-    const { issue }: IssuesEvent = body as unknown as IssuesEvent;
-
     let anonymousUser = false;
     if (!sync) {
         anonymousUser = true;
-        sync = !!repository?.id
-            ? await prisma.sync.findFirst({
+        syncs = !!repository?.id
+            ? await prisma.sync.findMany({
                   where: {
                       githubRepoId: repository.id
                   },
@@ -77,6 +70,11 @@ export async function githubWebhookHandler(
               })
             : null;
 
+        let sync = syncs !== null ? syncs.find(sync => {
+            // label matching
+            return issue.labels.map(l => l.name).includes(sync.label);
+        }) : null;
+
         if (!sync) {
             console.log(`Could not find sync for ${repository?.full_name}`);
             throw new ApiError(
@@ -85,6 +83,7 @@ export async function githubWebhookHandler(
             );
         }
     }
+    console.log(sync.id)
 
     const HMAC = createHmac("sha256", sync.GitHubRepo?.webhookSecret ?? "");
     const digest = Buffer.from(
@@ -313,9 +312,9 @@ export async function githubWebhookHandler(
     } else if (
         action === "opened" ||
         (action === "labeled" &&
-            body.label?.name?.toLowerCase() === LINEAR.GITHUB_LABEL)
+            body.label?.name?.toLowerCase() === sync.label)
     ) {
-        // Issue opened or special "linear" label added
+        // Issue opened or special sync label added
 
         if (syncedIssue) {
             const reason = `Not creating ticket as issue ${issue.number} already exists on Linear as ${syncedIssue.linearIssueNumber}.`;
