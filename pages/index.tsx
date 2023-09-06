@@ -18,7 +18,6 @@ const index = () => {
     const { linearContext, setLinearContext, gitHubContext, setGitHubContext } =
         useContext(Context);
     const [synced, setSynced] = useState(false);
-    const [restored, setRestored] = useState(false);
     const [syncLabel, setSyncLabel] = useState('');
     const refresh = () => {
         localStorage.clear();
@@ -50,13 +49,11 @@ const index = () => {
             setLinearContext(
                 JSON.parse(localStorage.getItem(LINEAR.STORAGE_KEY))
             );
-            setRestored(true);
         }
         if (localStorage.getItem(GITHUB.STORAGE_KEY)) {
             setGitHubContext(
                 JSON.parse(localStorage.getItem(GITHUB.STORAGE_KEY))
             );
-            setRestored(true);
         }
     }, []);
 
@@ -74,7 +71,7 @@ const index = () => {
                 JSON.stringify(gitHubContext)
             );
         }
-
+        
         if (linearContext.teamId && linearContext.linearLabelId && gitHubContext.repoId && gitHubContext.githubLabelId) {
             saveSync(linearContext, gitHubContext)
                 .then(res => {
@@ -120,7 +117,6 @@ const index = () => {
                 <div className="w-full flex flex-col sm:flex-row justify-center items-center sm:items-start gap-4">
                     <LinearAuthButton
                         restoredApiKey={linearContext.apiKey}
-                        restored={restored}
                         onAuth={(apiKey: string) =>
                             setLinearContext({
                                 ...linearContext,
@@ -156,7 +152,6 @@ const index = () => {
                     </div>
                     <GitHubAuthButton
                         restoredApiKey={gitHubContext.apiKey}
-                        restored={restored}
                         onAuth={(apiKey: string) =>
                             setGitHubContext({
                                 ...gitHubContext,

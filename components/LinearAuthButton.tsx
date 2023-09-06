@@ -26,7 +26,6 @@ interface IProps {
     onAuth: (apiKey: string) => void;
     onDeployWebhook: (context: LinearContext) => void;
     restoredApiKey: string;
-    restored: boolean;
     syncLabel: string;
 }
 
@@ -34,7 +33,6 @@ const LinearAuthButton = ({
     onAuth,
     onDeployWebhook,
     restoredApiKey,
-    restored,
     syncLabel
 }: IProps) => {
     const [teams, setTeams] = useState<Array<LinearTeam>>([]);
@@ -241,7 +239,7 @@ const LinearAuthButton = ({
                 )}
                 {!!linearToken && <CheckIcon className="w-6 h-6" />}
             </button>
-            {teams.length > 0 && restored && syncLabel && (
+            {teams.length > 0 && syncLabel && (
                 <div className="flex flex-col items-center w-full space-y-4">
                     <Select
                         values={teams.map(team => ({

@@ -22,7 +22,6 @@ interface IProps {
     onAuth: (apiKey: string) => void;
     onDeployWebhook: (context: GitHubContext) => void;
     restoredApiKey: string;
-    restored: boolean;
     syncLabel: string;
 }
 
@@ -30,7 +29,6 @@ const GitHubAuthButton = ({
     onAuth,
     onDeployWebhook,
     restoredApiKey,
-    restored,
     syncLabel
 }: IProps) => {
     const [repos, setRepos] = useState<GitHubRepo[]>([]);
@@ -222,7 +220,7 @@ const GitHubAuthButton = ({
                 )}
                 {!!gitHubToken && <CheckIcon className="w-6 h-6" />}
             </button>
-            {repos?.length > 0 && gitHubUser && restored && syncLabel && (
+            {repos?.length > 0 && gitHubUser && syncLabel && (
                 <div className="flex flex-col w-full items-center space-y-4">
                     <Select
                         values={repos.map((repo: GitHubRepo) => ({
