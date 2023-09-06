@@ -4,6 +4,8 @@ import { GitHubContext, GitHubRepo, LinearContext, Sync } from "../typings";
 interface IProps {
     syncs: Sync[];
     setSyncs: (syncs: Sync[]) => void;
+    linearToken: string;
+    setLinearToken: (token: string) => void;
     gitHubToken: string;
     setGitHubToken: (token: string) => void;
     gitHubUser: GitHubRepo;
@@ -18,6 +20,7 @@ export const Context = createContext<IProps>(null);
 
 const ContextProvider = ({ children }: { children: React.ReactNode }) => {
     const [syncs, setSyncs] = useState<Sync[]>([]);
+    const [linearToken, setLinearToken] = useState("");
     const [gitHubToken, setGitHubToken] = useState("");
     const [gitHubUser, setGitHubUser] = useState<GitHubRepo>();
     const [linearContext, setLinearContext] = useState<LinearContext>({
@@ -40,6 +43,8 @@ const ContextProvider = ({ children }: { children: React.ReactNode }) => {
             value={{
                 syncs,
                 setSyncs,
+                linearToken,
+                setLinearToken,
                 gitHubToken,
                 setGitHubToken,
                 gitHubUser,

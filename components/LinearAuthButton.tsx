@@ -1,5 +1,5 @@
 import { CheckIcon, DotsHorizontalIcon } from "@radix-ui/react-icons";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {useCallback, useContext, useEffect, useMemo, useState} from "react";
 import {
     LinearContext,
     LinearObject,
@@ -20,6 +20,7 @@ import {
     checkUniqueLabelForTeam
 } from "../utils/linear";
 import Select from "./Select";
+import {Context} from "./ContextProvider";
 
 interface IProps {
     onAuth: (apiKey: string) => void;
@@ -36,7 +37,6 @@ const LinearAuthButton = ({
     restored,
     syncLabel
 }: IProps) => {
-    const [accessToken, setAccessToken] = useState("");
     const [teams, setTeams] = useState<Array<LinearTeam>>([]);
     const [chosenTeam, setChosenTeam] = useState<LinearTeam>();
     const [linearLabelId, setLinearLabelId] = useState("");
@@ -47,6 +47,9 @@ const LinearAuthButton = ({
     const [deployed, setDeployed] = useState(false);
     const [loading, setLoading] = useState(false);
     const [isUniqueSyncLabelForTeam, setIsUniqueSyncLabelForTeam] = useState(false);
+
+    const { linearToken, setLinearToken } =
+        useContext(Context);
 
     useEffect(() => {
         if (!syncLabel || !chosenTeam) return;
@@ -66,7 +69,7 @@ const LinearAuthButton = ({
 
     // If present, exchange the temporary auth code for an access token
     useEffect(() => {
-        if (accessToken) return;
+        if (linearToken) return;
 
         // If the URL params have an auth code, we're returning from the Linear auth page
         const authResponse = new URLSearchParams(window.location.search);
@@ -86,7 +89,7 @@ const LinearAuthButton = ({
         const refreshToken = authResponse.get("code");
         exchangeLinearToken(refreshToken)
             .then(body => {
-                if (body.access_token) setAccessToken(body.access_token);
+                if (body.access_token) setLinearToken(body.access_token);
                 else {
                     clearURLParams();
                     localStorage.removeItem(LINEAR.STORAGE_KEY);
@@ -97,21 +100,21 @@ const LinearAuthButton = ({
                 alert(`Error fetching access token: ${err}`);
                 setLoading(false);
             });
-    }, [accessToken]);
+    }, [linearToken]);
 
     // Restore the Linear context from local storage
     useEffect(() => {
-        if (restoredApiKey) setAccessToken(restoredApiKey);
+        if (restoredApiKey) setLinearToken(restoredApiKey);
     }, [restoredApiKey]);
 
     // Fetch the user ID and available teams when the token is available
     useEffect(() => {
-        if (!accessToken) return;
+        if (!linearToken) return;
         if (user?.id) return;
 
-        onAuth(accessToken);
+        onAuth(linearToken);
 
-        getLinearContext(accessToken)
+        getLinearContext(linearToken)
             .then(res => {
                 if (!res?.data?.teams || !res.data?.viewer)
                     alert("No Linear user or teams found");
@@ -120,22 +123,22 @@ const LinearAuthButton = ({
                 setUser(res.data.viewer);
             })
             .catch(err => alert(`Error fetching labels: ${err}`));
-    }, [accessToken]);
+    }, [linearToken]);
 
     // Disable deployment button if the webhook and team are already saved
     useEffect(() => {
-        if (!chosenTeam || !accessToken) return;
+        if (!chosenTeam || !linearToken) return;
 
         setLoading(true);
 
-        checkTeamWebhook(chosenTeam.id, chosenTeam.name, accessToken)
+        checkTeamWebhook(chosenTeam.id, chosenTeam.name, linearToken)
             .then(res => {
                 if (res?.webhookExists && res?.teamInDB) {
                     setDeployed(true);
                     onDeployWebhook({
                         userId: user.id,
                         teamId: chosenTeam.id,
-                        apiKey: accessToken,
+                        apiKey: linearToken,
                         label: syncLabel,
                         linearLabelId: linearLabelId
                     });
@@ -148,7 +151,7 @@ const LinearAuthButton = ({
                 alert(`Error checking for existing labels: ${err}`);
                 setLoading(false);
             });
-    }, [chosenTeam, accessToken, user, syncLabel, linearLabelId]);
+    }, [chosenTeam, linearToken, user, syncLabel, linearLabelId]);
 
     // Populate default ticket states when available
     useEffect(() => {
@@ -174,7 +177,7 @@ const LinearAuthButton = ({
     const deployWebhook = useCallback(() => {
         if (!chosenTeam || !syncLabel) return;
 
-        saveLinearContext(accessToken, chosenTeam, ticketStates, syncLabel)
+        saveLinearContext(linearToken, chosenTeam, ticketStates, syncLabel)
             .then((labelId) => {
                 setLinearLabelId(labelId);
             })
@@ -182,13 +185,13 @@ const LinearAuthButton = ({
             alert(`Error saving labels to DB: ${err}`)
         );
 
-        setLinearWebhook(accessToken, chosenTeam.id)
+        setLinearWebhook(linearToken, chosenTeam.id)
             .then(() => {
                 setDeployed(true);
                 onDeployWebhook({
                     userId: user.id,
                     teamId: chosenTeam.id,
-                    apiKey: accessToken,
+                    apiKey: linearToken,
                     label: syncLabel,
                     linearLabelId: linearLabelId
                 });
@@ -199,7 +202,7 @@ const LinearAuthButton = ({
                     onDeployWebhook({
                         userId: user.id,
                         teamId: chosenTeam.id,
-                        apiKey: accessToken,
+                        apiKey: linearToken,
                         label: syncLabel,
                         linearLabelId: linearLabelId
                     });
@@ -212,7 +215,7 @@ const LinearAuthButton = ({
             });
 
         setDeployed(true);
-    }, [accessToken, chosenTeam, syncLabel, linearLabelId, deployed, user, ticketStates]);
+    }, [linearToken, chosenTeam, syncLabel, linearLabelId, deployed, user, ticketStates]);
 
     const missingTicketState = useMemo<boolean>(() => {
         return (
@@ -224,7 +227,7 @@ const LinearAuthButton = ({
         <div className="center space-y-8 w-80">
             <button
                 onClick={openLinearAuth}
-                disabled={!!accessToken || loading}
+                disabled={!!linearToken || loading}
                 className={loading ? "animate-pulse" : ""}
                 arial-label="Authorize with Linear"
             >
@@ -236,7 +239,7 @@ const LinearAuthButton = ({
                 ) : (
                     <span>1. Connect Linear</span>
                 )}
-                {!!accessToken && <CheckIcon className="w-6 h-6" />}
+                {!!linearToken && <CheckIcon className="w-6 h-6" />}
             </button>
             {teams.length > 0 && restored && syncLabel && (
                 <div className="flex flex-col items-center w-full space-y-4">
