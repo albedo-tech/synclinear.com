@@ -41,19 +41,24 @@ export const saveGitHubContext = async (
     webhookSecret: string,
     token: string,
     label: string,
+    deployed: boolean
 ) => {
-    const data = {
-        repoId: repo.id,
-        repoName: repo.name,
-        webhookSecret
-    };
+    let saveData = {}
 
-    const saveResponse = await fetch("/api/github/save", {
-        method: "POST",
-        body: JSON.stringify(data)
-    });
+    if (!deployed) {
+        const data = {
+            repoId: repo.id,
+            repoName: repo.name,
+            webhookSecret
+        };
 
-    const saveData = await saveResponse.json();
+        const saveResponse = await fetch("/api/github/save", {
+            method: "POST",
+            body: JSON.stringify(data)
+        });
+
+        saveData = await saveResponse.json();
+    }
 
     const syncLabelResponse = await fetch("/api/github/label", {
         method: "POST",

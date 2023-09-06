@@ -3,7 +3,7 @@ import React, { useCallback, useContext, useEffect, useState } from "react";
 import { GitHubContext, GitHubRepo } from "../typings";
 import { clearURLParams } from "../utils";
 import { v4 as uuid } from "uuid";
-import { GITHUB } from "../utils/constants";
+import {GITHUB} from "../utils/constants";
 import DeployButton from "./DeployButton";
 import {
     exchangeGitHubToken,
@@ -23,13 +23,15 @@ interface IProps {
     onDeployWebhook: (context: GitHubContext) => void;
     restoredApiKey: string;
     syncLabel: string;
+    syncCreated: boolean;
 }
 
 const GitHubAuthButton = ({
     onAuth,
     onDeployWebhook,
     restoredApiKey,
-    syncLabel
+    syncLabel,
+    syncCreated
 }: IProps) => {
     const [repos, setRepos] = useState<GitHubRepo[]>([]);
     const [reposLoading, setReposLoading] = useState(false);
@@ -42,6 +44,11 @@ const GitHubAuthButton = ({
     const { gitHubToken, setGitHubToken, gitHubUser, setGitHubUser } =
         useContext(Context);
 
+    useEffect(() => {
+        setLoading(false);
+    }, [syncCreated])
+
+    // Сheck the uniqueness of the label for the repository
     useEffect(() => {
         if (!syncLabel || !chosenRepo) return;
 
@@ -136,7 +143,15 @@ const GitHubAuthButton = ({
 
     // Disable webhook deployment button if the repo already exists
     useEffect(() => {
-        if (!chosenRepo || !syncLabel || !gitHubUser || !gitHubToken || !githubLabelId) return;
+        if (!chosenRepo || !gitHubUser || !gitHubToken || !syncLabel) return;
+
+        onDeployWebhook({
+            userId: gitHubUser.id,
+            repoId: chosenRepo.id,
+            apiKey: gitHubToken,
+            label: syncLabel,
+            githubLabelId: githubLabelId
+        });
 
         setLoading(true);
 
@@ -174,8 +189,10 @@ const GitHubAuthButton = ({
     const deployWebhook = useCallback(() => {
         if (!chosenRepo || !syncLabel) return;
 
+        setLoading(true);
+
         const webhookSecret = `${uuid()}`;
-        saveGitHubContext(chosenRepo, webhookSecret, gitHubToken, syncLabel)
+        saveGitHubContext(chosenRepo, webhookSecret, gitHubToken, syncLabel, deployed)
             .then((res) => {
                 if (res.syncLabelData.createdLabel.id) {
                     setGithubLabelId(res.syncLabelData.createdLabel.id.toString());
@@ -184,23 +201,35 @@ const GitHubAuthButton = ({
             .catch(err => alert(`Error saving repo to DB: ${err}`)
         );
 
-        setGitHubWebook(gitHubToken, chosenRepo, webhookSecret)
-            .then(res => {
-                if (res.errors) {
-                    alert(res.errors[0].message);
-                    return;
-                }
-                setDeployed(true);
-                onDeployWebhook({
-                    userId: gitHubUser.id,
-                    repoId: chosenRepo.id,
-                    apiKey: gitHubToken,
-                    label: syncLabel,
-                    githubLabelId: githubLabelId
-                });
-            })
-            .catch(err => alert(`Error deploying webhook: ${err}`));
-    }, [gitHubToken, chosenRepo, syncLabel, githubLabelId, deployed, gitHubUser]);
+        if (!deployed) {
+            setGitHubWebook(gitHubToken, chosenRepo, webhookSecret)
+                .then(res => {
+                    if (res.errors) {
+                        alert(res.errors[0].message);
+                        return;
+                    }
+                    setDeployed(true);
+                    onDeployWebhook({
+                        userId: gitHubUser.id,
+                        repoId: chosenRepo.id,
+                        apiKey: gitHubToken,
+                        label: syncLabel,
+                        githubLabelId: githubLabelId
+                    });
+                })
+                .catch(err => alert(`Error deploying webhook: ${err}`));
+        } else {
+            setDeployed(true);
+            onDeployWebhook({
+                userId: gitHubUser.id,
+                repoId: chosenRepo.id,
+                apiKey: gitHubToken,
+                label: syncLabel,
+                githubLabelId: githubLabelId
+            });
+        }
+
+    }, [gitHubToken, chosenRepo, syncLabel, githubLabelId, deployed, gitHubUser, syncCreated]);
 
     return (
         <div className="center space-y-8 w-80">
@@ -236,7 +265,7 @@ const GitHubAuthButton = ({
                     {chosenRepo && isUniqueSyncLabelForGithubRepo && (
                         <DeployButton
                             loading={loading}
-                            deployed={deployed}
+                            deployed={(deployed && syncCreated) && (!!chosenRepo.id && !!githubLabelId && !!gitHubToken)}
                             onDeploy={deployWebhook}
                         />
                     )}

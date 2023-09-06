@@ -27,13 +27,15 @@ interface IProps {
     onDeployWebhook: (context: LinearContext) => void;
     restoredApiKey: string;
     syncLabel: string;
+    syncCreated: boolean;
 }
 
 const LinearAuthButton = ({
     onAuth,
     onDeployWebhook,
     restoredApiKey,
-    syncLabel
+    syncLabel,
+    syncCreated
 }: IProps) => {
     const [teams, setTeams] = useState<Array<LinearTeam>>([]);
     const [chosenTeam, setChosenTeam] = useState<LinearTeam>();
@@ -49,6 +51,11 @@ const LinearAuthButton = ({
     const { linearToken, setLinearToken } =
         useContext(Context);
 
+    useEffect(() => {
+        setLoading(false);
+    }, [syncCreated])
+
+    // Сheck the uniqueness of the label for the team
     useEffect(() => {
         if (!syncLabel || !chosenTeam) return;
 
@@ -125,8 +132,7 @@ const LinearAuthButton = ({
 
     // Disable deployment button if the webhook and team are already saved
     useEffect(() => {
-        if (!chosenTeam || !linearToken) return;
-
+        if (!chosenTeam || !linearToken || !syncLabel) return;
         setLoading(true);
 
         checkTeamWebhook(chosenTeam.id, chosenTeam.name, linearToken)
@@ -161,6 +167,14 @@ const LinearAuthButton = ({
             done: states.find(s => s.name === LINEAR.TICKET_STATES.done),
             canceled: states.find(s => s.name === LINEAR.TICKET_STATES.canceled)
         });
+
+        onDeployWebhook({
+            userId: user.id,
+            teamId: chosenTeam.id,
+            apiKey: linearToken,
+            label: syncLabel,
+            linearLabelId: linearLabelId
+        });
     }, [chosenTeam]);
 
     const openLinearAuth = () => {
@@ -174,6 +188,8 @@ const LinearAuthButton = ({
 
     const deployWebhook = useCallback(() => {
         if (!chosenTeam || !syncLabel) return;
+
+        setLoading(true);
 
         saveLinearContext(linearToken, chosenTeam, ticketStates, syncLabel)
             .then((labelId) => {
@@ -196,7 +212,7 @@ const LinearAuthButton = ({
             })
             .catch(err => {
                 if (err?.message?.includes("url not unique")) {
-                    alert("Webhook already deployed");
+                    // alert("Webhook already deployed");
                     onDeployWebhook({
                         userId: user.id,
                         teamId: chosenTeam.id,
@@ -211,8 +227,6 @@ const LinearAuthButton = ({
                 setDeployed(false);
                 alert(`Error deploying webhook: ${err}`);
             });
-
-        setDeployed(true);
     }, [linearToken, chosenTeam, syncLabel, linearLabelId, deployed, user, ticketStates]);
 
     const missingTicketState = useMemo<boolean>(() => {
@@ -293,7 +307,7 @@ const LinearAuthButton = ({
                         <DeployButton
                             disabled={missingTicketState}
                             loading={loading}
-                            deployed={deployed}
+                            deployed={(deployed && syncCreated) || (!!chosenTeam.id && !!linearLabelId && !!linearToken) }
                             onDeploy={deployWebhook}
                         />
                     )}

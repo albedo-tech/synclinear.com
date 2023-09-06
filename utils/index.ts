@@ -1,6 +1,7 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
 import { GitHubContext, LinearContext, Platform } from "../typings";
 import { GENERAL, GITHUB } from "./constants";
+import prisma from "../prisma";
 
 export const isDev = (): boolean => {
     return process.env.NODE_ENV === "development";
@@ -101,6 +102,18 @@ export const saveSync = async (
     const response = await fetch("/api/save", {
         method: "POST",
         body: JSON.stringify(data)
+    });
+
+    return await response.json();
+};
+
+export const checkSyncRecords = async (
+    githubRepoId: number,
+    linearTeamId: string
+) => {
+    const response = await fetch("/api/check", {
+        method: "POST",
+        body: JSON.stringify({githubRepoId, linearTeamId})
     });
 
     return await response.json();

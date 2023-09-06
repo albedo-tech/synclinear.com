@@ -5,7 +5,7 @@ import Landing from "../components/Landing";
 import LinearAuthButton from "../components/LinearAuthButton";
 import PageHead from "../components/PageHead";
 import SyncArrow from "../components/SyncArrow";
-import { saveSync } from "../utils";
+import { saveSync, checkSyncRecords } from "../utils";
 import confetti from "canvas-confetti";
 import {GITHUB, LINEAR} from "../utils/constants";
 import { ExternalLinkIcon } from "@radix-ui/react-icons";
@@ -18,6 +18,7 @@ const index = () => {
     const { linearContext, setLinearContext, gitHubContext, setGitHubContext } =
         useContext(Context);
     const [synced, setSynced] = useState(false);
+    const [syncCreatedForTeamAndRepo, setSyncCreatedForTeamAndRepo] = useState(false);
     const [syncLabel, setSyncLabel] = useState('');
     const refresh = () => {
         setLinearContext({
@@ -70,7 +71,18 @@ const index = () => {
                 JSON.stringify(gitHubContext)
             );
         }
-        
+
+        if (linearContext.teamId && gitHubContext.repoId) {
+            checkSyncRecords(parseInt(gitHubContext.repoId), linearContext.teamId)
+                .then(res => {
+                    setSyncCreatedForTeamAndRepo(res.exists);
+                })
+                .catch(err => {
+                    alert(`Error checking for existing sync for team and repo: ${err}`);
+                    setSyncCreatedForTeamAndRepo(false);
+            });
+        }
+
         if (linearContext.teamId && linearContext.linearLabelId && gitHubContext.repoId && gitHubContext.githubLabelId) {
             saveSync(linearContext, gitHubContext)
                 .then(res => {
@@ -124,18 +136,19 @@ const index = () => {
                         }
                         syncLabel={syncLabel}
                         onDeployWebhook={setLinearContext}
+                        syncCreated={syncCreatedForTeamAndRepo}
                     />
                     <div className="flex sm:center h-20 sm:h-fit sm:w-56 shrink gap-4">
                         <SyncArrow
                             direction="right"
                             active={
-                                !!linearContext.teamId && !!gitHubContext.apiKey
+                                !!linearContext.teamId && !!linearContext.linearLabelId && !!linearContext.apiKey && !!gitHubContext.apiKey
                             }
                         />
                         <SyncArrow
                             direction="left"
                             active={
-                                !!gitHubContext.repoId && !!linearContext.apiKey
+                                !!gitHubContext.repoId && !!gitHubContext.githubLabelId && !!linearContext.apiKey && !!gitHubContext.apiKey
                             }
                         />
                         {linearContext.apiKey && gitHubContext.apiKey && (
@@ -159,6 +172,7 @@ const index = () => {
                         }
                         syncLabel={syncLabel}
                         onDeployWebhook={setGitHubContext}
+                        syncCreated={syncCreatedForTeamAndRepo}
                     />
                 </div>
                 <div
