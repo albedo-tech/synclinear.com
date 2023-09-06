@@ -20,18 +20,17 @@ const index = () => {
     const [synced, setSynced] = useState(false);
     const [syncLabel, setSyncLabel] = useState('');
     const refresh = () => {
-        localStorage.clear();
         setLinearContext({
-            userId: "",
+            userId: linearContext.userId,
             teamId: "",
-            apiKey: "",
+            apiKey: linearContext.apiKey,
             label: "",
             linearLabelId: ""
         })
         setGitHubContext({
-            userId: "",
+            userId: gitHubContext.userId,
             repoId: "",
-            apiKey: "",
+            apiKey: gitHubContext.apiKey,
             label: "",
             githubLabelId: ""
         })
