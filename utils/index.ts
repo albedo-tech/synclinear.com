@@ -9,7 +9,7 @@ export const isDev = (): boolean => {
 export const getWebhookURL = (): string => {
     if (typeof window == "undefined") {
         // TODO: Support ngrok URLs for local development
-        return "https://synclinear.com/api";
+        return process.env.APP_URL_FOR_LOCAL_DEV + "/api";
     }
 
     if (window.location.hostname === "localhost") return "https://example.com";
