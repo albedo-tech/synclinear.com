@@ -204,18 +204,20 @@ const GitHubAuthButton = ({
         if (!deployed) {
             setGitHubWebook(gitHubToken, chosenRepo, webhookSecret)
                 .then(res => {
-                    if (res.errors) {
-                        alert(res.errors[0].message);
-                        return;
+                    if (res.status === 200) {
+                        setDeployed(true);
+                        onDeployWebhook({
+                            userId: gitHubUser.id,
+                            repoId: chosenRepo.id,
+                            apiKey: gitHubToken,
+                            label: syncLabel,
+                            githubLabelId: githubLabelId
+                        });
+                    } else {
+                        alert(`Error deploying webhook: ${res.res.message}`)
+                        setDeployed(false);
+                        setLoading(false);
                     }
-                    setDeployed(true);
-                    onDeployWebhook({
-                        userId: gitHubUser.id,
-                        repoId: chosenRepo.id,
-                        apiKey: gitHubToken,
-                        label: syncLabel,
-                        githubLabelId: githubLabelId
-                    });
                 })
                 .catch(err => alert(`Error deploying webhook: ${err}`));
         } else {

@@ -134,7 +134,10 @@ export const setGitHubWebook = async (
         }
     );
 
-    return await response.json();
+    const status = response.status;
+    const res = await response.json();
+
+    return {status, res};
 };
 
 export const updateGitHubWebhook = async (
