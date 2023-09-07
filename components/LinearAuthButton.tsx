@@ -43,17 +43,26 @@ const LinearAuthButton = ({
     const [ticketStates, setTicketStates] = useState<{
         [key in TicketState]: LinearObject;
     }>();
-    const [user, setUser] = useState<LinearObject>();
     const [deployed, setDeployed] = useState(false);
     const [loading, setLoading] = useState(false);
     const [isUniqueSyncLabelForTeam, setIsUniqueSyncLabelForTeam] = useState(false);
 
-    const { linearToken, setLinearToken } =
+    const { linearToken, setLinearToken, linearUser, setLinearUser } =
         useContext(Context);
 
     useEffect(() => {
         setLoading(false);
     }, [syncCreated])
+
+    useEffect(() => {
+        onDeployWebhook({
+            userId: linearUser ? linearUser.id : "",
+            teamId: chosenTeam ? chosenTeam.id : "",
+            apiKey: linearToken,
+            label: syncLabel,
+            linearLabelId: linearLabelId
+        });
+    }, [linearUser, chosenTeam, linearToken, syncLabel, linearLabelId])
 
     // Сheck the uniqueness of the label for the team
     useEffect(() => {
@@ -115,7 +124,7 @@ const LinearAuthButton = ({
     // Fetch the user ID and available teams when the token is available
     useEffect(() => {
         if (!linearToken) return;
-        if (user?.id) return;
+        if (linearUser?.id) return;
 
         onAuth(linearToken);
 
@@ -125,7 +134,7 @@ const LinearAuthButton = ({
                     alert("No Linear user or teams found");
 
                 setTeams(res.data.teams.nodes);
-                setUser(res.data.viewer);
+                setLinearUser(res.data.viewer);
             })
             .catch(err => alert(`Error fetching labels: ${err}`));
     }, [linearToken]);
@@ -140,7 +149,7 @@ const LinearAuthButton = ({
                 if (res?.webhookExists && res?.teamInDB) {
                     setDeployed(true);
                     onDeployWebhook({
-                        userId: user.id,
+                        userId: linearUser.id,
                         teamId: chosenTeam.id,
                         apiKey: linearToken,
                         label: syncLabel,
@@ -155,7 +164,7 @@ const LinearAuthButton = ({
                 alert(`Error checking for existing labels: ${err}`);
                 setLoading(false);
             });
-    }, [chosenTeam, linearToken, user, syncLabel, linearLabelId]);
+    }, [chosenTeam, linearToken, linearUser, syncLabel, linearLabelId]);
 
     // Populate default ticket states when available
     useEffect(() => {
@@ -166,14 +175,6 @@ const LinearAuthButton = ({
             todo: states.find(s => s.name === LINEAR.TICKET_STATES.todo),
             done: states.find(s => s.name === LINEAR.TICKET_STATES.done),
             canceled: states.find(s => s.name === LINEAR.TICKET_STATES.canceled)
-        });
-
-        onDeployWebhook({
-            userId: user.id,
-            teamId: chosenTeam.id,
-            apiKey: linearToken,
-            label: syncLabel,
-            linearLabelId: linearLabelId
         });
     }, [chosenTeam]);
 
@@ -203,7 +204,7 @@ const LinearAuthButton = ({
             .then(() => {
                 setDeployed(true);
                 onDeployWebhook({
-                    userId: user.id,
+                    userId: linearUser.id,
                     teamId: chosenTeam.id,
                     apiKey: linearToken,
                     label: syncLabel,
@@ -214,7 +215,7 @@ const LinearAuthButton = ({
                 if (err?.message?.includes("url not unique")) {
                     // alert("Webhook already deployed");
                     onDeployWebhook({
-                        userId: user.id,
+                        userId: linearUser.id,
                         teamId: chosenTeam.id,
                         apiKey: linearToken,
                         label: syncLabel,
@@ -227,7 +228,7 @@ const LinearAuthButton = ({
                 setDeployed(false);
                 alert(`Error deploying webhook: ${err}`);
             });
-    }, [linearToken, chosenTeam, syncLabel, linearLabelId, deployed, user, ticketStates]);
+    }, [linearToken, chosenTeam, syncLabel, linearLabelId, deployed, linearUser, ticketStates]);
 
     const missingTicketState = useMemo<boolean>(() => {
         return (

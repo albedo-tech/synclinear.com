@@ -103,10 +103,14 @@ model User {
     githubUserId   Int
     githubUsername String
     githubEmail    String?
+    githubApiKey   String
+    githubApiKeyIV String
 
     linearUserId   String
     linearUsername String
     linearEmail    String?
+    linearApiKey   String
+    linearApiKeyIV String
 
     @@unique([githubUserId, linearUserId])
     @@map("users")

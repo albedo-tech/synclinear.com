@@ -5,7 +5,7 @@ import Landing from "../components/Landing";
 import LinearAuthButton from "../components/LinearAuthButton";
 import PageHead from "../components/PageHead";
 import SyncArrow from "../components/SyncArrow";
-import { saveSync, checkSyncRecords } from "../utils";
+import {saveSync, checkSyncRecords, createUser} from "../utils";
 import confetti from "canvas-confetti";
 import {GITHUB, LINEAR} from "../utils/constants";
 import { ExternalLinkIcon } from "@radix-ui/react-icons";
@@ -17,6 +17,7 @@ import LogoShelf from "../components/LogoShelf";
 const index = () => {
     const { linearContext, setLinearContext, gitHubContext, setGitHubContext } =
         useContext(Context);
+    const [userUpdated, setUserUpdated] = useState(false);
     const [synced, setSynced] = useState(false);
     const [syncCreatedForTeamAndRepo, setSyncCreatedForTeamAndRepo] = useState(false);
     const [syncLabel, setSyncLabel] = useState('');
@@ -81,6 +82,17 @@ const index = () => {
                     alert(`Error checking for existing sync for team and repo: ${err}`);
                     setSyncCreatedForTeamAndRepo(false);
             });
+        }
+
+        if (!userUpdated && linearContext.userId && linearContext.apiKey && gitHubContext.userId && gitHubContext.apiKey) {
+            createUser(linearContext, gitHubContext)
+                .then(r => {
+                    setUserUpdated(true);
+                    alert('Linear user and Github user mapped successfully');
+                })
+                .catch(err => {
+                    alert(err);
+                });
         }
 
         if (linearContext.teamId && linearContext.linearLabelId && gitHubContext.repoId && gitHubContext.githubLabelId) {

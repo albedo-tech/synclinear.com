@@ -3,12 +3,13 @@ import got from "got";
 import type { NextApiResponse } from "next/types";
 import prisma from "../../prisma";
 import {
+    GitHubContext,
     GitHubIssueLabel,
-    GitHubMarkdownOptions,
+    GitHubMarkdownOptions, LinearContext,
     Platform
 } from "../../typings";
-import { GITHUB } from "../../utils/constants";
-import { replaceImgTags, replaceStrikethroughTags } from "../../utils";
+import {GITHUB, LINEAR} from "../../utils/constants";
+import {decrypt, encrypt, replaceImgTags, replaceStrikethroughTags} from "../../utils";
 
 /**
  * Server-only utility functions
@@ -20,31 +21,44 @@ export default (_, res: NextApiResponse) => {
 /**
  * Map a Linear username to a GitHub username in the database if not already mapped
  *
- * @param {LinearClient} linearClient to get the authenticated Linear user's info
- * @param {number} githubUserId
- * @param {string} linearUserId
- * @param {string} userAgentHeader to respect GitHub API's policies
- * @param {string} githubAuthHeader to get the authenticated GitHub user's info
+ * @param githubContext
+ * @param linearContext
  */
 export const upsertUser = async (
-    linearClient: LinearClient,
-    githubUserId: number,
-    linearUserId: string,
-    userAgentHeader: string,
-    githubAuthHeader: string
-): Promise<void> => {
-    const existingUser = await prisma.user.findFirst({
-        where: {
-            AND: {
-                githubUserId: githubUserId,
-                linearUserId: linearUserId
+    githubContext: GitHubContext,
+    linearContext: LinearContext,
+): Promise< {
+    success: boolean;
+    error?: string;
+}> => {
+    try {
+        // Encrypt the API keys
+        const {hash: linearApiKey, initVector: linearApiKeyIV} = encrypt(
+            linearContext.apiKey
+        );
+        const {hash: githubApiKey, initVector: githubApiKeyIV} = encrypt(
+            githubContext.apiKey
+        );
+
+        const linearKey = process.env.LINEAR_API_KEY
+            ? process.env.LINEAR_API_KEY
+            : decrypt(linearApiKey, linearApiKeyIV);
+
+        const linearClient = new LinearClient({
+            apiKey: linearKey,
+            headers: {
+                ...LINEAR.PUBLIC_QUERY_HEADERS
             }
-        }
-    });
+        });
 
-    if (!existingUser) {
-        console.log("Adding user to users table");
+        const githubKey = process.env.GITHUB_API_KEY
+            ? process.env.GITHUB_API_KEY
+            : decrypt(githubApiKey, githubApiKeyIV);
 
+        const githubAuthHeader = `token ${githubKey}`;
+        const userAgentHeader = `linear-github-sync`;
+
+        // Map the user's Linear username to their GitHub username if not yet mapped
         const linearUser = await linearClient.viewer;
 
         const githubUserResponse = await got.get(
@@ -61,28 +75,38 @@ export const upsertUser = async (
         await prisma.user.upsert({
             where: {
                 githubUserId_linearUserId: {
-                    githubUserId: githubUserId,
-                    linearUserId: linearUserId
+                    githubUserId: parseInt(githubContext.userId),
+                    linearUserId: linearContext.userId
                 }
             },
             update: {
                 githubUsername: githubUserBody.login,
                 githubEmail: githubUserBody.email ?? "",
                 linearUsername: linearUser.displayName,
-                linearEmail: linearUser.email ?? ""
+                linearEmail: linearUser.email ?? "",
+                githubApiKey,
+                githubApiKeyIV,
+                linearApiKey,
+                linearApiKeyIV
             },
             create: {
-                githubUserId: githubUserId,
-                linearUserId: linearUserId,
+                githubUserId: parseInt(githubContext.userId),
+                linearUserId: linearContext.userId,
                 githubUsername: githubUserBody.login,
                 githubEmail: githubUserBody.email ?? "",
                 linearUsername: linearUser.displayName,
-                linearEmail: linearUser.email ?? ""
+                linearEmail: linearUser.email ?? "",
+                linearApiKey,
+                linearApiKeyIV,
+                githubApiKey,
+                githubApiKeyIV
             }
         });
-    }
 
-    return;
+        return {success: true}
+    } catch (err) {
+        return {success: false, error: err}
+    }
 };
 
 /**

@@ -1,7 +1,6 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
 import { GitHubContext, LinearContext, Platform } from "../typings";
-import { GENERAL, GITHUB } from "./constants";
-import prisma from "../prisma";
+import {GENERAL, GITHUB, LINEAR} from "./constants";
 
 export const isDev = (): boolean => {
     return process.env.NODE_ENV === "development";
@@ -156,5 +155,22 @@ export const skipReason = (
 
 export const isNumber = (value: string | number): boolean => {
     return !isNaN(Number(value));
+};
+
+export const createUser = async (
+    linearContext: LinearContext,
+    githubContext: GitHubContext
+) => {
+    const data = {
+        github: { ...githubContext },
+        linear: { ...linearContext },
+    };
+
+    const response = await fetch("/api/user", {
+        method: "POST",
+        body: JSON.stringify(data)
+    });
+
+    return await response.json();
 };
 

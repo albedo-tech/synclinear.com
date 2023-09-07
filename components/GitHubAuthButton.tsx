@@ -48,6 +48,16 @@ const GitHubAuthButton = ({
         setLoading(false);
     }, [syncCreated])
 
+    useEffect(() => {
+        onDeployWebhook({
+            userId: gitHubUser ? gitHubUser.id : "",
+            repoId: chosenRepo ? chosenRepo.id : "",
+            apiKey: gitHubToken,
+            label: syncLabel,
+            githubLabelId: githubLabelId
+        });
+    }, [gitHubUser, chosenRepo, gitHubToken, syncLabel, githubLabelId])
+
     // Сheck the uniqueness of the label for the repository
     useEffect(() => {
         if (!syncLabel || !chosenRepo) return;
