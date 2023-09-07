@@ -39,20 +39,26 @@ export const getGitHubAuthURL = (verificationCode: string): string => {
 export const saveGitHubContext = async (
     repo: GitHubRepo,
     webhookSecret: string,
-    token: string
+    token: string,
+    label: string,
+    deployed: boolean
 ) => {
-    const data = {
-        repoId: repo.id,
-        repoName: repo.name,
-        webhookSecret
-    };
+    let saveData = {}
 
-    const saveResponse = await fetch("/api/github/save", {
-        method: "POST",
-        body: JSON.stringify(data)
-    });
+    if (!deployed) {
+        const data = {
+            repoId: repo.id,
+            repoName: repo.name,
+            webhookSecret
+        };
 
-    const saveData = await saveResponse.json();
+        const saveResponse = await fetch("/api/github/save", {
+            method: "POST",
+            body: JSON.stringify(data)
+        });
+
+        saveData = await saveResponse.json();
+    }
 
     const syncLabelResponse = await fetch("/api/github/label", {
         method: "POST",
@@ -63,7 +69,7 @@ export const saveGitHubContext = async (
         body: JSON.stringify({
             repoName: repo.name,
             label: {
-                name: LINEAR.GITHUB_LABEL,
+                name: label,
                 color: LINEAR.GITHUB_LABEL_COLOR
             }
         })
@@ -128,7 +134,10 @@ export const setGitHubWebook = async (
         }
     );
 
-    return await response.json();
+    const status = response.status;
+    const res = await response.json();
+
+    return {status, res};
 };
 
 export const updateGitHubWebhook = async (
@@ -273,3 +282,15 @@ export const setIssueMilestone = async (
     return response;
 };
 
+export const checkUniqueLabelForGithubRepo = async (
+    repoId: string,
+    label: string,
+): Promise<any> => {
+    const response = await fetch("/api/github/check", {
+        method: "POST",
+        body: JSON.stringify({ repoId, label }),
+        headers: { "Content-Type": "application/json" }
+    });
+
+    return await response.json();
+};

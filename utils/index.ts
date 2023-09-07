@@ -1,6 +1,6 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
 import { GitHubContext, LinearContext, Platform } from "../typings";
-import { GENERAL, GITHUB } from "./constants";
+import {GENERAL, GITHUB, LINEAR} from "./constants";
 
 export const isDev = (): boolean => {
     return process.env.NODE_ENV === "development";
@@ -9,7 +9,7 @@ export const isDev = (): boolean => {
 export const getWebhookURL = (): string => {
     if (typeof window == "undefined") {
         // TODO: Support ngrok URLs for local development
-        return "https://synclinear.com/api";
+        return process.env.APP_URL_FOR_LOCAL_DEV + "/api";
     }
 
     if (window.location.hostname === "localhost") return "https://example.com";
@@ -95,12 +95,24 @@ export const saveSync = async (
 ) => {
     const data = {
         github: { ...githubContext },
-        linear: { ...linearContext }
+        linear: { ...linearContext },
     };
 
     const response = await fetch("/api/save", {
         method: "POST",
         body: JSON.stringify(data)
+    });
+
+    return await response.json();
+};
+
+export const checkSyncRecords = async (
+    githubRepoId: number,
+    linearTeamId: string
+) => {
+    const response = await fetch("/api/check", {
+        method: "POST",
+        body: JSON.stringify({githubRepoId, linearTeamId})
     });
 
     return await response.json();
@@ -143,5 +155,22 @@ export const skipReason = (
 
 export const isNumber = (value: string | number): boolean => {
     return !isNaN(Number(value));
+};
+
+export const createUser = async (
+    linearContext: LinearContext,
+    githubContext: GitHubContext
+) => {
+    const data = {
+        github: { ...githubContext },
+        linear: { ...linearContext },
+    };
+
+    const response = await fetch("/api/user", {
+        method: "POST",
+        body: JSON.stringify(data)
+    });
+
+    return await response.json();
 };
 

@@ -55,6 +55,12 @@ export const getLinearContext = async (token: string) => {
                         name
                     }
                 }
+                members {
+                    nodes {
+                        id
+                        name
+                    }
+                }
             }
         }
         viewer {
@@ -278,23 +284,24 @@ export const updateLinearCycle = async (
 export const saveLinearContext = async (
     token: string,
     team: LinearTeam,
-    stateLabels: { [key in TicketState]: LinearObject }
+    stateLabels: { [key in TicketState]: LinearObject },
+    label: string
 ) => {
-    let publicLabel = team.labels?.nodes?.find?.(n => n.name === "Public");
+    let linearLabel = team.labels?.nodes?.find?.(n => n.name === label);
 
-    if (!publicLabel) {
+    if (!linearLabel) {
         const { data } = await createLinearLabel(
             token,
             team.id,
-            "Public",
+            label,
             "#2DA54E"
         );
 
         if (!data?.issueLabelCreate?.issueLabel) {
-            alert('Please create a Linear label called "Public"');
+            alert(`Please create a Linear label called "${label}"`);
         }
 
-        publicLabel = data?.issueLabelCreate?.issueLabel;
+        linearLabel = data?.issueLabelCreate?.issueLabel;
     }
 
     if (!stateLabels) {
@@ -305,16 +312,20 @@ export const saveLinearContext = async (
     const data = {
         teamId: team.id,
         teamName: team.name,
-        publicLabelId: publicLabel?.id,
         toDoStateId: stateLabels["todo"]?.id,
         doneStateId: stateLabels["done"]?.id,
-        canceledStateId: stateLabels["canceled"]?.id
+        canceledStateId: stateLabels["canceled"]?.id,
+        members: team.members?.nodes
     };
 
     const response = await fetch("/api/linear/save", {
         method: "POST",
         body: JSON.stringify(data)
     });
+
+    if (response.status === 200) {
+        return linearLabel?.id
+    }
 
     return response.json();
 };
@@ -348,6 +359,19 @@ export const checkTeamWebhook = async (
             teamId,
             teamName
         })
+    });
+
+    return await response.json();
+};
+
+export const checkUniqueLabelForTeam = async (
+    teamId: string,
+    label: string,
+): Promise<any> => {
+    const response = await fetch("/api/linear/check", {
+        method: "POST",
+        body: JSON.stringify({ teamId, label }),
+        headers: { "Content-Type": "application/json" }
     });
 
     return await response.json();

@@ -15,8 +15,7 @@ import {
     createComment,
     createLabel,
     prepareMarkdownContent,
-    replaceMentions,
-    upsertUser
+    replaceMentions
 } from "../../pages/api/utils";
 import got from "got";
 import { getLinearCycle, inviteMember } from "../linear";
@@ -43,9 +42,64 @@ export async function linearWebhookHandler(
         type: actionType
     }: LinearWebhookPayload = body;
 
-    const syncs = await prisma.sync.findMany({
+    // Comments do not come with teamId
+    const syncedIssue = action === "create" && actionType === "Comment" ? await prisma.syncedIssue.findFirst({
+        where: {
+            linearIssueId: data.issueId
+        },
+        include: { GitHubRepo: true }
+    }) : await prisma.syncedIssue.findFirst({
+        where: {
+            linearIssueId: data.id,
+            linearTeamId: data.teamId
+        },
+        include: { GitHubRepo: true }
+    });
+
+    if (action === "create" && actionType === "Comment") {
+        if (data.id.includes(GITHUB.UUID_SUFFIX)) {
+            console.log(skipReason("comment", data.issue!.id, true));
+            return skipReason("comment", data.issue!.id, true);
+        }
+
+        if (!syncedIssue) {
+            console.log(
+                skipReason("comment", `${data.team?.key}-${data.number}`)
+            );
+
+            return skipReason(
+                "comment",
+                `${data.team?.key}-${data.number}`
+            );
+        }
+    }
+
+    const teamMember = await prisma.linearTeamMember.findFirst({
+        where: {
+            userId: data.userId ?? data.creatorId,
+            teamId: data.teamId ? data.teamId : syncedIssue.linearTeamId
+        }
+    });
+
+    if (!teamMember) {
+        console.log("Could not find team member.");
+        return "Could not find team member.";
+    }
+
+    const user = await prisma.user.findFirst({
         where: {
             linearUserId: data.userId ?? data.creatorId
+        }
+    });
+
+    if (!user) {
+        console.log("Could not find Linear user.");
+        return "Could not find Linear user.";
+    }
+
+    const syncs = await prisma.sync.findMany({
+        where: {
+            linearTeamId: teamMember.teamId
         },
         include: {
             LinearTeam: true,
@@ -54,20 +108,22 @@ export async function linearWebhookHandler(
     });
 
     const sync = syncs.find(sync => {
-        // For comment events the teamId property from linear is not passed,
-        // so we fallback to only match on user
-        const isTeamMatching = data.teamId
-            ? sync.linearTeamId === data.teamId
-            : true;
-        const isUserMatching =
-            sync.linearUserId === (data.userId ?? data.creatorId);
+        // label matching
+        const isLinearLabelIdMatching = !data.labelIds ? false
+            : Object.values(data.labelIds).includes(sync.linearLabelId);
+        // matching by removed label
+        const isRemovedLabelMatching = !updatedFrom || !updatedFrom.labelIds ? false
+            : Object.values(updatedFrom.labelIds).includes(sync.linearLabelId);
+        // Comments do not come with labelIds
+        const isIssueMatching = action === "create" && actionType === "Comment" ?
+            (sync.linearTeamId === syncedIssue.linearTeamId && sync.githubRepoId === syncedIssue.githubRepoId) : false;
 
-        return isUserMatching && isTeamMatching;
+        return (isLinearLabelIdMatching || isRemovedLabelMatching) || isIssueMatching;
     });
 
     if (syncs.length === 0 || !sync) {
-        console.log("Could not find Linear user in syncs.");
-        return "Could not find Linear user in syncs.";
+        console.log("Could not find sync for team and label");
+        return "Could not find sync for team and label.";
     }
 
     if (!sync?.LinearTeam || !sync?.GitHubRepo) {
@@ -76,16 +132,18 @@ export async function linearWebhookHandler(
     }
 
     const {
-        linearUserId,
         linearTeamId,
+        linearLabelId,
+        LinearTeam: { doneStateId, canceledStateId },
+        GitHubRepo: { repoName: repoFullName, repoId }
+    } = sync;
+
+    const {
         linearApiKey,
         linearApiKeyIV,
         githubApiKey,
-        githubUserId,
-        githubApiKeyIV,
-        LinearTeam: { publicLabelId, doneStateId, canceledStateId },
-        GitHubRepo: { repoName: repoFullName, repoId }
-    } = sync;
+        githubApiKeyIV
+    } = user;
 
     const linearKey = process.env.LINEAR_API_KEY
         ? process.env.LINEAR_API_KEY
@@ -108,26 +166,9 @@ export async function linearWebhookHandler(
     const userAgentHeader = `${repoFullName}, linear-github-sync`;
     const issuesEndpoint = `https://api.github.com/repos/${repoFullName}/issues`;
 
-    // Map the user's Linear username to their GitHub username if not yet mapped
-    await upsertUser(
-        linear,
-        githubUserId,
-        linearUserId,
-        userAgentHeader,
-        githubAuthHeader
-    );
-
-    const syncedIssue = await prisma.syncedIssue.findFirst({
-        where: {
-            linearIssueId: data.id,
-            linearTeamId: data.teamId
-        },
-        include: { GitHubRepo: true }
-    });
-
     if (action === "update") {
-        // Label updated on an already-Public issue
-        if (updatedFrom.labelIds?.includes(publicLabelId)) {
+        // Label updated on an already-synclabel issue
+        if (updatedFrom.labelIds?.includes(linearLabelId)) {
             if (!syncedIssue) {
                 console.log(skipReason("label", ticketName));
                 return skipReason("label", ticketName);
@@ -139,13 +180,13 @@ export async function linearWebhookHandler(
                     id => !data.labelIds.includes(id)
                 );
 
-                // Public label removed
-                if (removedLabelId === publicLabelId) {
+                // Sync label removed
+                if (removedLabelId === linearLabelId) {
                     await prisma.syncedIssue.delete({
                         where: { id: syncedIssue.id }
                     });
 
-                    const reason = `Deleted synced issue ${ticketName} after Public label removed.`;
+                    const reason = `Deleted synced issue ${ticketName} after ${sync.label} label removed.`;
                     console.log(reason);
                     return reason;
                 }
@@ -220,8 +261,8 @@ export async function linearWebhookHandler(
             }
         } else if (
             updatedFrom.labelIds &&
-            !updatedFrom.labelIds?.includes(publicLabelId) &&
-            data.labelIds?.includes(publicLabelId)
+            !updatedFrom.labelIds?.includes(linearLabelId) &&
+            data.labelIds?.includes(linearLabelId)
         ) {
             // Public label added to an issue
             if (syncedIssue) {
@@ -341,10 +382,10 @@ export async function linearWebhookHandler(
             ] as Promise<any>[]);
 
             // Apply all labels to newly-created issue
-            const labelIds = data.labelIds.filter(id => id != publicLabelId);
+            const labelIds = data.labelIds.filter(id => id != linearLabelId);
             const labelNames: string[] = [];
             for (const labelId of labelIds) {
-                if (labelId === publicLabelId) continue;
+                if (labelId === linearLabelId) continue;
 
                 const label = await linear.issueLabel(labelId);
                 if (!label) {
@@ -918,31 +959,6 @@ export async function linearWebhookHandler(
     } else if (action === "create") {
         if (actionType === "Comment") {
             // Comment added
-
-            if (data.id.includes(GITHUB.UUID_SUFFIX)) {
-                console.log(skipReason("comment", data.issue!.id, true));
-                return skipReason("comment", data.issue!.id, true);
-            }
-
-            // Overrides the outer-scope syncedIssue because comments do not come with teamId
-            const syncedIssue = await prisma.syncedIssue.findFirst({
-                where: {
-                    linearIssueId: data.issueId
-                },
-                include: { GitHubRepo: true }
-            });
-
-            if (!syncedIssue) {
-                console.log(
-                    skipReason("comment", `${data.team?.key}-${data.number}`)
-                );
-
-                return skipReason(
-                    "comment",
-                    `${data.team?.key}-${data.number}`
-                );
-            }
-
             const modifiedBody = await replaceMentions(data.body, "linear");
             const footer = getGitHubFooter(data.user?.name);
 
@@ -966,8 +982,8 @@ export async function linearWebhookHandler(
         } else if (actionType === "Issue") {
             // Issue created
 
-            if (!data.labelIds?.includes(publicLabelId)) {
-                const reason = "Issue is not labeled as public";
+            if (!data.labelIds?.includes(linearLabelId)) {
+                const reason = `Issue is not labeled as ${sync.label}`;
                 console.log(reason);
                 return reason;
             }
@@ -1010,6 +1026,9 @@ export async function linearWebhookHandler(
                 },
                 json: {
                     title: `[${ticketName}] ${data.title}`,
+                    labels: [
+                        sync.label,
+                    ],
                     body: `${
                         modifiedDescription ?? ""
                     }\n\n<sub>${getSyncFooter()} | [${ticketName}](${url})</sub>`,
@@ -1076,10 +1095,10 @@ export async function linearWebhookHandler(
             ] as Promise<any>[]);
 
             // Apply all labels to newly-created issue
-            const labelIds = data.labelIds.filter(id => id != publicLabelId);
+            const labelIds = data.labelIds.filter(id => id != linearLabelId);
             const labelNames: string[] = [];
             for (const labelId of labelIds) {
-                if (labelId === publicLabelId) continue;
+                if (labelId === linearLabelId) continue;
 
                 const label = await linear.issueLabel(labelId);
                 if (!label) {

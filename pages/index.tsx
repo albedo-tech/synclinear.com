@@ -5,9 +5,9 @@ import Landing from "../components/Landing";
 import LinearAuthButton from "../components/LinearAuthButton";
 import PageHead from "../components/PageHead";
 import SyncArrow from "../components/SyncArrow";
-import { saveSync } from "../utils";
+import {saveSync, checkSyncRecords, createUser} from "../utils";
 import confetti from "canvas-confetti";
-import { GITHUB, LINEAR } from "../utils/constants";
+import {GITHUB, LINEAR} from "../utils/constants";
 import { ExternalLinkIcon } from "@radix-ui/react-icons";
 import Header from "../components/Header";
 import { Context } from "../components/ContextProvider";
@@ -17,8 +17,32 @@ import LogoShelf from "../components/LogoShelf";
 const index = () => {
     const { linearContext, setLinearContext, gitHubContext, setGitHubContext } =
         useContext(Context);
+    const [userUpdated, setUserUpdated] = useState(false);
     const [synced, setSynced] = useState(false);
-    const [restored, setRestored] = useState(false);
+    const [syncCreatedForTeamAndRepo, setSyncCreatedForTeamAndRepo] = useState(false);
+    const [syncLabel, setSyncLabel] = useState('');
+    const refresh = () => {
+        setLinearContext({
+            userId: linearContext.userId,
+            teamId: "",
+            apiKey: linearContext.apiKey,
+            label: "",
+            linearLabelId: ""
+        })
+        setGitHubContext({
+            userId: gitHubContext.userId,
+            repoId: "",
+            apiKey: gitHubContext.apiKey,
+            label: "",
+            githubLabelId: ""
+        })
+
+        window.location.reload()
+    }
+
+    const handleChangeChosenTag = (event) => {
+        setSyncLabel(event.target.value);
+    };
 
     // Load the saved context from localStorage
     useEffect(() => {
@@ -26,13 +50,11 @@ const index = () => {
             setLinearContext(
                 JSON.parse(localStorage.getItem(LINEAR.STORAGE_KEY))
             );
-            setRestored(true);
         }
         if (localStorage.getItem(GITHUB.STORAGE_KEY)) {
             setGitHubContext(
                 JSON.parse(localStorage.getItem(GITHUB.STORAGE_KEY))
             );
-            setRestored(true);
         }
     }, []);
 
@@ -52,6 +74,28 @@ const index = () => {
         }
 
         if (linearContext.teamId && gitHubContext.repoId) {
+            checkSyncRecords(parseInt(gitHubContext.repoId), linearContext.teamId)
+                .then(res => {
+                    setSyncCreatedForTeamAndRepo(res.exists);
+                })
+                .catch(err => {
+                    alert(`Error checking for existing sync for team and repo: ${err}`);
+                    setSyncCreatedForTeamAndRepo(false);
+            });
+        }
+
+        if (!userUpdated && linearContext.userId && linearContext.apiKey && gitHubContext.userId && gitHubContext.apiKey) {
+            createUser(linearContext, gitHubContext)
+                .then(r => {
+                    setUserUpdated(true);
+                    alert('Linear user and Github user mapped successfully');
+                })
+                .catch(err => {
+                    alert(err);
+                });
+        }
+
+        if (linearContext.teamId && linearContext.linearLabelId && gitHubContext.repoId && gitHubContext.githubLabelId) {
             saveSync(linearContext, gitHubContext)
                 .then(res => {
                     if (res.error) {
@@ -69,7 +113,7 @@ const index = () => {
                         decay: 0.95
                     });
 
-                    localStorage.clear();
+                    setTimeout(refresh, 5000)
                 })
                 .catch(err => {
                     alert(err);
@@ -96,39 +140,51 @@ const index = () => {
                 <div className="w-full flex flex-col sm:flex-row justify-center items-center sm:items-start gap-4">
                     <LinearAuthButton
                         restoredApiKey={linearContext.apiKey}
-                        restored={restored}
                         onAuth={(apiKey: string) =>
                             setLinearContext({
                                 ...linearContext,
                                 apiKey
                             })
                         }
+                        syncLabel={syncLabel}
                         onDeployWebhook={setLinearContext}
+                        syncCreated={syncCreatedForTeamAndRepo}
                     />
                     <div className="flex sm:center h-20 sm:h-fit sm:w-56 shrink gap-4">
                         <SyncArrow
                             direction="right"
                             active={
-                                !!linearContext.teamId && !!gitHubContext.apiKey
+                                !!linearContext.teamId && !!linearContext.linearLabelId && !!linearContext.apiKey && !!gitHubContext.apiKey
                             }
                         />
                         <SyncArrow
                             direction="left"
                             active={
-                                !!gitHubContext.repoId && !!linearContext.apiKey
+                                !!gitHubContext.repoId && !!gitHubContext.githubLabelId && !!linearContext.apiKey && !!gitHubContext.apiKey
                             }
                         />
+                        {linearContext.apiKey && gitHubContext.apiKey && (
+                            <div className="flex flex-col w-full items-center mt-6">
+                                <input
+                                    type="text"
+                                    className="border border-gray-300 bg-white text-gray-900 text-sm rounded-full block w-full px-6 py-4"
+                                    placeholder="3. Create tag for sync"
+                                    onChange={handleChangeChosenTag}
+                                />
+                            </div>
+                        )}
                     </div>
                     <GitHubAuthButton
                         restoredApiKey={gitHubContext.apiKey}
-                        restored={restored}
                         onAuth={(apiKey: string) =>
                             setGitHubContext({
                                 ...gitHubContext,
                                 apiKey
                             })
                         }
+                        syncLabel={syncLabel}
                         onDeployWebhook={setGitHubContext}
+                        syncCreated={syncCreatedForTeamAndRepo}
                     />
                 </div>
                 <div
@@ -139,7 +195,7 @@ const index = () => {
                     <h3 className="text-green-600">Synced!</h3>
                     <p>
                         To test your connection, tag a Linear issue as{" "}
-                        <code>Public</code>:
+                        <code>{syncLabel}</code>:
                     </p>
                     <button onClick={() => window.open(LINEAR.APP_URL)}>
                         <span>Open Linear</span>

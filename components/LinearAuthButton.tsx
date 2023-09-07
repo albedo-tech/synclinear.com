@@ -1,5 +1,5 @@
 import { CheckIcon, DotsHorizontalIcon } from "@radix-ui/react-icons";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {useCallback, useContext, useEffect, useMemo, useState} from "react";
 import {
     LinearContext,
     LinearObject,
@@ -16,36 +16,74 @@ import {
     checkTeamWebhook,
     getLinearAuthURL,
     saveLinearContext,
-    setLinearWebhook
+    setLinearWebhook,
+    checkUniqueLabelForTeam
 } from "../utils/linear";
 import Select from "./Select";
+import {Context} from "./ContextProvider";
 
 interface IProps {
     onAuth: (apiKey: string) => void;
     onDeployWebhook: (context: LinearContext) => void;
     restoredApiKey: string;
-    restored: boolean;
+    syncLabel: string;
+    syncCreated: boolean;
 }
 
 const LinearAuthButton = ({
     onAuth,
     onDeployWebhook,
     restoredApiKey,
-    restored
+    syncLabel,
+    syncCreated
 }: IProps) => {
-    const [accessToken, setAccessToken] = useState("");
     const [teams, setTeams] = useState<Array<LinearTeam>>([]);
     const [chosenTeam, setChosenTeam] = useState<LinearTeam>();
+    const [linearLabelId, setLinearLabelId] = useState("");
     const [ticketStates, setTicketStates] = useState<{
         [key in TicketState]: LinearObject;
     }>();
-    const [user, setUser] = useState<LinearObject>();
     const [deployed, setDeployed] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [isUniqueSyncLabelForTeam, setIsUniqueSyncLabelForTeam] = useState(false);
+
+    const { linearToken, setLinearToken, linearUser, setLinearUser } =
+        useContext(Context);
+
+    useEffect(() => {
+        setLoading(false);
+    }, [syncCreated])
+
+    useEffect(() => {
+        onDeployWebhook({
+            userId: linearUser ? linearUser.id : "",
+            teamId: chosenTeam ? chosenTeam.id : "",
+            apiKey: linearToken,
+            label: syncLabel,
+            linearLabelId: linearLabelId
+        });
+    }, [linearUser, chosenTeam, linearToken, syncLabel, linearLabelId])
+
+    // Сheck the uniqueness of the label for the team
+    useEffect(() => {
+        if (!syncLabel || !chosenTeam) return;
+
+        checkUniqueLabelForTeam(chosenTeam.id, syncLabel).then(
+            res => {
+                setIsUniqueSyncLabelForTeam(res.checkingResult);
+                if (!res.checkingResult) {
+                    alert(res.error)
+                }
+            }
+        ).catch(err => {
+            // alert(`Error checking label: ${err}`);
+            setIsUniqueSyncLabelForTeam(false);
+        });
+    },[syncLabel, chosenTeam])
 
     // If present, exchange the temporary auth code for an access token
     useEffect(() => {
-        if (accessToken) return;
+        if (linearToken) return;
 
         // If the URL params have an auth code, we're returning from the Linear auth page
         const authResponse = new URLSearchParams(window.location.search);
@@ -65,7 +103,7 @@ const LinearAuthButton = ({
         const refreshToken = authResponse.get("code");
         exchangeLinearToken(refreshToken)
             .then(body => {
-                if (body.access_token) setAccessToken(body.access_token);
+                if (body.access_token) setLinearToken(body.access_token);
                 else {
                     clearURLParams();
                     localStorage.removeItem(LINEAR.STORAGE_KEY);
@@ -76,45 +114,46 @@ const LinearAuthButton = ({
                 alert(`Error fetching access token: ${err}`);
                 setLoading(false);
             });
-    }, [accessToken]);
+    }, [linearToken]);
 
     // Restore the Linear context from local storage
     useEffect(() => {
-        if (restoredApiKey) setAccessToken(restoredApiKey);
+        if (restoredApiKey) setLinearToken(restoredApiKey);
     }, [restoredApiKey]);
 
     // Fetch the user ID and available teams when the token is available
     useEffect(() => {
-        if (!accessToken) return;
-        if (user?.id) return;
+        if (!linearToken) return;
+        if (linearUser?.id) return;
 
-        onAuth(accessToken);
+        onAuth(linearToken);
 
-        getLinearContext(accessToken)
+        getLinearContext(linearToken)
             .then(res => {
                 if (!res?.data?.teams || !res.data?.viewer)
                     alert("No Linear user or teams found");
 
                 setTeams(res.data.teams.nodes);
-                setUser(res.data.viewer);
+                setLinearUser(res.data.viewer);
             })
             .catch(err => alert(`Error fetching labels: ${err}`));
-    }, [accessToken]);
+    }, [linearToken]);
 
     // Disable deployment button if the webhook and team are already saved
     useEffect(() => {
-        if (!chosenTeam || !accessToken) return;
-
+        if (!chosenTeam || !linearToken || !syncLabel) return;
         setLoading(true);
 
-        checkTeamWebhook(chosenTeam.id, chosenTeam.name, accessToken)
+        checkTeamWebhook(chosenTeam.id, chosenTeam.name, linearToken)
             .then(res => {
                 if (res?.webhookExists && res?.teamInDB) {
                     setDeployed(true);
                     onDeployWebhook({
-                        userId: user.id,
+                        userId: linearUser.id,
                         teamId: chosenTeam.id,
-                        apiKey: accessToken
+                        apiKey: linearToken,
+                        label: syncLabel,
+                        linearLabelId: linearLabelId
                     });
                 } else {
                     setDeployed(false);
@@ -125,7 +164,7 @@ const LinearAuthButton = ({
                 alert(`Error checking for existing labels: ${err}`);
                 setLoading(false);
             });
-    }, [chosenTeam, accessToken, user]);
+    }, [chosenTeam, linearToken, linearUser, syncLabel, linearLabelId]);
 
     // Populate default ticket states when available
     useEffect(() => {
@@ -149,24 +188,39 @@ const LinearAuthButton = ({
     };
 
     const deployWebhook = useCallback(() => {
-        if (!chosenTeam || deployed) return;
+        if (!chosenTeam || !syncLabel) return;
 
-        saveLinearContext(accessToken, chosenTeam, ticketStates).catch(err =>
+        setLoading(true);
+
+        saveLinearContext(linearToken, chosenTeam, ticketStates, syncLabel)
+            .then((labelId) => {
+                setLinearLabelId(labelId);
+            })
+            .catch(err =>
             alert(`Error saving labels to DB: ${err}`)
         );
 
-        setLinearWebhook(accessToken, chosenTeam.id)
+        setLinearWebhook(linearToken, chosenTeam.id)
             .then(() => {
                 setDeployed(true);
                 onDeployWebhook({
-                    userId: user.id,
+                    userId: linearUser.id,
                     teamId: chosenTeam.id,
-                    apiKey: accessToken
+                    apiKey: linearToken,
+                    label: syncLabel,
+                    linearLabelId: linearLabelId
                 });
             })
             .catch(err => {
                 if (err?.message?.includes("url not unique")) {
-                    alert("Webhook already deployed");
+                    // alert("Webhook already deployed");
+                    onDeployWebhook({
+                        userId: linearUser.id,
+                        teamId: chosenTeam.id,
+                        apiKey: linearToken,
+                        label: syncLabel,
+                        linearLabelId: linearLabelId
+                    });
                     setDeployed(true);
                     return;
                 }
@@ -174,9 +228,7 @@ const LinearAuthButton = ({
                 setDeployed(false);
                 alert(`Error deploying webhook: ${err}`);
             });
-
-        setDeployed(true);
-    }, [accessToken, chosenTeam, deployed, user, ticketStates]);
+    }, [linearToken, chosenTeam, syncLabel, linearLabelId, deployed, linearUser, ticketStates]);
 
     const missingTicketState = useMemo<boolean>(() => {
         return (
@@ -188,7 +240,7 @@ const LinearAuthButton = ({
         <div className="center space-y-8 w-80">
             <button
                 onClick={openLinearAuth}
-                disabled={!!accessToken || loading}
+                disabled={!!linearToken || loading}
                 className={loading ? "animate-pulse" : ""}
                 arial-label="Authorize with Linear"
             >
@@ -200,9 +252,9 @@ const LinearAuthButton = ({
                 ) : (
                     <span>1. Connect Linear</span>
                 )}
-                {!!accessToken && <CheckIcon className="w-6 h-6" />}
+                {!!linearToken && <CheckIcon className="w-6 h-6" />}
             </button>
-            {teams.length > 0 && restored && (
+            {teams.length > 0 && syncLabel && (
                 <div className="flex flex-col items-center w-full space-y-4">
                     <Select
                         values={teams.map(team => ({
@@ -213,7 +265,7 @@ const LinearAuthButton = ({
                             setChosenTeam(teams.find(team => team.id === id))
                         }
                         disabled={loading}
-                        placeholder="3. Find your team"
+                        placeholder="4. Find your team"
                     />
                     {chosenTeam?.states?.nodes && (
                         <div className="w-full space-y-4 pb-4">
@@ -252,11 +304,11 @@ const LinearAuthButton = ({
                             )}
                         </div>
                     )}
-                    {chosenTeam && (
+                    {chosenTeam && isUniqueSyncLabelForTeam && (
                         <DeployButton
                             disabled={missingTicketState}
                             loading={loading}
-                            deployed={deployed}
+                            deployed={(deployed && syncCreated) || (!!chosenTeam.id && !!linearLabelId && !!linearToken) }
                             onDeploy={deployWebhook}
                         />
                     )}

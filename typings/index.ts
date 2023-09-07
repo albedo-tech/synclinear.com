@@ -61,6 +61,7 @@ export interface LinearTeam extends LinearObject {
     key: string;
     labels: { nodes: LinearObject[] };
     states: { nodes: LinearState[] };
+    members: { nodes: LinearObject[] };
 }
 
 export type TicketState = keyof typeof LINEAR.TICKET_STATES;
@@ -74,18 +75,24 @@ export interface LinearContext {
     userId: string;
     teamId: string;
     apiKey: string;
+    label: string;
+    linearLabelId: string;
 }
 
 export interface GitHubContext {
     userId: string;
     repoId: string;
     apiKey: string;
+    label: string;
+    githubLabelId: string;
 }
 
 export interface Sync {
     id: string;
     LinearTeam: { id: string; teamName: string };
     GitHubRepo: { id: string; repoName: string };
+    label: string;
+    linearLabelId: string;
 }
 
 export type MilestoneState = "open" | "closed";

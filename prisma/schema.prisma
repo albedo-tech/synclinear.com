@@ -32,8 +32,6 @@ model LinearTeam {
     teamId   String @unique
     teamName String
 
-    publicLabelId String
-
     canceledStateId String
     doneStateId     String
     toDoStateId     String
@@ -43,7 +41,20 @@ model LinearTeam {
     SyncedIssue SyncedIssue[]
     Milestone   Milestone[]
 
+    LinearTeamMember LinearTeamMember[]
+
     @@map("linear_teams")
+}
+
+model LinearTeamMember {
+    id String @id @default(cuid())
+
+    userId       String
+    LinearTeam   LinearTeam @relation(fields: [teamId], references: [teamId])
+    teamId String
+
+    @@unique([teamId, userId])
+    @@map("linear_team_members")
 }
 
 model GitHubRepo {
@@ -70,13 +81,13 @@ model Sync {
 
     GitHubRepo     GitHubRepo @relation(fields: [githubRepoId], references: [repoId])
     githubRepoId   Int
-    githubApiKey   String
-    githubApiKeyIV String
+    githubLabelId String
 
     LinearTeam     LinearTeam @relation(fields: [linearTeamId], references: [teamId])
     linearTeamId   String
-    linearApiKey   String
-    linearApiKeyIV String
+    linearLabelId String
+
+    label String
 
     @@unique([githubUserId, linearUserId, githubRepoId, linearTeamId])
     @@map("syncs")
@@ -88,10 +99,14 @@ model User {
     githubUserId   Int
     githubUsername String
     githubEmail    String?
+    githubApiKey   String
+    githubApiKeyIV String
 
     linearUserId   String
     linearUsername String
     linearEmail    String?
+    linearApiKey   String
+    linearApiKeyIV String
 
     @@unique([githubUserId, linearUserId])
     @@map("users")

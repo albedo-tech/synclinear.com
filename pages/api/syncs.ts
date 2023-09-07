@@ -49,7 +49,9 @@ export default async function handle(
                             id: true,
                             repoName: true
                         }
-                    }
+                    },
+                    label: true,
+                    linearLabelId: true
                 }
             });
 

@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import prisma from "../../prisma";
-import { encrypt } from "../../utils";
 
 // POST /api/save
 export default async function handle(
@@ -14,8 +13,11 @@ export default async function handle(
             message: "Only POST requests are accepted."
         });
     }
-
+    
     const { github, linear } = JSON.parse(req.body);
+    const linearLabelId = linear.linearLabelId;
+    const githubLabelId = github.githubLabelId;
+    const label = linear.label;
 
     // Check for each required field
     if (!github?.userId) {
@@ -38,44 +40,47 @@ export default async function handle(
         return res
             .status(404)
             .send({ error: "Failed to save sync: missing API key" });
+    } else if (!linear?.label) {
+        return res
+            .status(404)
+            .send({ error: "Failed to save sync: missing label" });
+    } else if (!linear?.linearLabelId) {
+        return res
+            .status(404)
+            .send({ error: "Failed to save sync: missing linear label id" });
+    } else if (!github?.githubLabelId) {
+        return res
+            .status(404)
+            .send({ error: "Failed to save sync: missing github label id" });
     }
-
-    // Encrypt the API keys
-    const { hash: linearApiKey, initVector: linearApiKeyIV } = encrypt(
-        linear.apiKey
-    );
-    const { hash: githubApiKey, initVector: githubApiKeyIV } = encrypt(
-        github.apiKey
-    );
 
     try {
         await prisma.sync.upsert({
             where: {
                 githubUserId_linearUserId_githubRepoId_linearTeamId: {
                     githubUserId: github.userId,
-                    githubRepoId: github.repoId,
                     linearUserId: linear.userId,
+                    githubRepoId: github.repoId,
                     linearTeamId: linear.teamId
                 }
             },
             update: {
-                githubApiKey,
-                githubApiKeyIV,
-                linearApiKey,
-                linearApiKeyIV
+                githubLabelId,
+                linearLabelId,
+                label
             },
             create: {
                 // GitHub
                 githubUserId: github.userId,
                 githubRepoId: github.repoId,
-                githubApiKey,
-                githubApiKeyIV,
+                githubLabelId,
 
                 // Linear
                 linearUserId: linear.userId,
                 linearTeamId: linear.teamId,
-                linearApiKey,
-                linearApiKeyIV
+                linearLabelId,
+
+                label
             }
         });
 
