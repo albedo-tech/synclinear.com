@@ -15,8 +15,7 @@ import {
     createComment,
     createLabel,
     prepareMarkdownContent,
-    replaceMentions,
-    upsertUser
+    replaceMentions
 } from "../../pages/api/utils";
 import got from "got";
 import { getLinearCycle, inviteMember } from "../linear";
@@ -83,8 +82,19 @@ export async function linearWebhookHandler(
     });
 
     if (!teamMember) {
-        console.log("Could not find Linear user (team member) in syncs.");
-        return "Could not find Linear user (team member) in syncs.";
+        console.log("Could not find team member.");
+        return "Could not find team member.";
+    }
+
+    const user = await prisma.user.findFirst({
+        where: {
+            linearUserId: data.userId ?? data.creatorId
+        }
+    });
+
+    if (!user) {
+        console.log("Could not find Linear user.");
+        return "Could not find Linear user.";
     }
 
     const syncs = await prisma.sync.findMany({
@@ -122,17 +132,18 @@ export async function linearWebhookHandler(
     }
 
     const {
-        linearUserId,
         linearTeamId,
-        linearApiKey,
-        linearApiKeyIV,
         linearLabelId,
-        githubApiKey,
-        githubUserId,
-        githubApiKeyIV,
         LinearTeam: { doneStateId, canceledStateId },
         GitHubRepo: { repoName: repoFullName, repoId }
     } = sync;
+
+    const {
+        linearApiKey,
+        linearApiKeyIV,
+        githubApiKey,
+        githubApiKeyIV
+    } = user;
 
     const linearKey = process.env.LINEAR_API_KEY
         ? process.env.LINEAR_API_KEY
@@ -154,15 +165,6 @@ export async function linearWebhookHandler(
     const githubAuthHeader = `token ${githubKey}`;
     const userAgentHeader = `${repoFullName}, linear-github-sync`;
     const issuesEndpoint = `https://api.github.com/repos/${repoFullName}/issues`;
-
-    // Map the user's Linear username to their GitHub username if not yet mapped
-    await upsertUser(
-        linear,
-        githubUserId,
-        linearUserId,
-        userAgentHeader,
-        githubAuthHeader
-    );
 
     if (action === "update") {
         // Label updated on an already-synclabel issue

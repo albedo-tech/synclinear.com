@@ -2,7 +2,7 @@ import prisma from "../../prisma";
 import {createHmac, timingSafeEqual} from "crypto";
 import {decrypt, formatJSON, getAttachmentQuery, getSyncFooter, skipReason} from "../index";
 import {LinearClient} from "@linear/sdk";
-import {prepareMarkdownContent, upsertUser} from "../../pages/api/utils";
+import {prepareMarkdownContent} from "../../pages/api/utils";
 import {
     Issue,
     IssueCommentCreatedEvent,
@@ -16,7 +16,7 @@ import {
     User
 } from "@octokit/webhooks-types";
 import {createLinearCycle, generateLinearUUID, updateLinearCycle} from "../linear";
-import {LINEAR, SHARED} from "../constants";
+import {SHARED} from "../constants";
 import got from "got";
 import {linearQuery} from "../apollo";
 import {ApiError} from "../errors";
@@ -29,23 +29,45 @@ export async function githubWebhookHandler(
     const { repository, sender, action } = body;
 
     const { issue }: IssuesEvent = body as unknown as IssuesEvent;
+    const anonymousUser = !!sender?.id ? false : true;
+    const user = !anonymousUser ? await prisma.user.findFirst({
+            where: {
+                githubUserId: sender?.id
+            }
+        }) : null;
 
-    let syncs = !!repository?.id && !!sender?.id ?
-        await prisma.sync.findMany({
-                  where: {
-                      githubRepoId: repository.id,
-                      githubUserId: sender.id
-                  },
-                  include: {
-                      GitHubRepo: true,
-                      LinearTeam: true
-                  }
-              }) : null;
+    if (!anonymousUser && user === null) {
+        console.log(`Could not find user for ${sender?.id}`);
+        throw new ApiError(
+            `Could not find sync for ${sender?.id}`,
+            404
+        );
+    }
+
+    let syncs = !!repository?.id
+        ? await prisma.sync.findMany({
+            where: {
+                githubRepoId: repository.id
+            },
+            include: {
+                GitHubRepo: true,
+                LinearTeam: true
+            }
+        })
+        : null;
 
     let sync = syncs !== null ? syncs.find(sync => {
         // label matching
         return issue.labels.map(l => l.name).includes(sync.label);
     }) : null;
+
+    if (!sync) {
+        console.log(`Could not find sync for ${repository?.full_name}`);
+        throw new ApiError(
+            `Could not find sync for ${repository?.full_name}`,
+            404
+        );
+    }
 
     if (
         (!sync?.LinearTeam || !sync?.GitHubRepo) &&
@@ -54,36 +76,6 @@ export async function githubWebhookHandler(
         console.log("Could not find issue's corresponding team.");
         throw new ApiError("Could not find issue's corresponding team.", 404);
     }
-
-    let anonymousUser = false;
-    if (!sync) {
-        anonymousUser = true;
-        syncs = !!repository?.id
-            ? await prisma.sync.findMany({
-                  where: {
-                      githubRepoId: repository.id
-                  },
-                  include: {
-                      GitHubRepo: true,
-                      LinearTeam: true
-                  }
-              })
-            : null;
-
-        let sync = syncs !== null ? syncs.find(sync => {
-            // label matching
-            return issue.labels.map(l => l.name).includes(sync.label);
-        }) : null;
-
-        if (!sync) {
-            console.log(`Could not find sync for ${repository?.full_name}`);
-            throw new ApiError(
-                `Could not find sync for ${repository?.full_name}`,
-                404
-            );
-        }
-    }
-    console.log(sync.id)
 
     const HMAC = createHmac("sha256", sync.GitHubRepo?.webhookSecret ?? "");
     const digest = Buffer.from(
@@ -99,12 +91,6 @@ export async function githubWebhookHandler(
     }
 
     const {
-        linearUserId,
-        linearApiKey,
-        linearApiKeyIV,
-        githubUserId,
-        githubApiKey,
-        githubApiKeyIV,
         LinearTeam: {
             doneStateId,
             toDoStateId,
@@ -113,6 +99,13 @@ export async function githubWebhookHandler(
         },
         GitHubRepo: { repoName }
     } = sync;
+
+    const {
+        linearApiKey,
+        linearApiKeyIV,
+        githubApiKey,
+        githubApiKeyIV,
+    } = user;
 
     let linearKey = process.env.LINEAR_API_KEY
         ? process.env.LINEAR_API_KEY
@@ -133,17 +126,6 @@ export async function githubWebhookHandler(
     const githubAuthHeader = `token ${githubKey}`;
     const userAgentHeader = `${repoName}, linear-github-sync`;
     const issuesEndpoint = `https://api.github.com/repos/${repoName}/issues`;
-
-    if (!anonymousUser) {
-        // Map the user's GitHub username to their Linear username if not yet mapped
-        await upsertUser(
-            linear,
-            githubUserId,
-            linearUserId,
-            userAgentHeader,
-            githubAuthHeader
-        );
-    }
 
     const syncedIssue = !!repository?.id
         ? await prisma.syncedIssue.findFirst({
