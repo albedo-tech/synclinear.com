@@ -81,14 +81,10 @@ model Sync {
 
     GitHubRepo     GitHubRepo @relation(fields: [githubRepoId], references: [repoId])
     githubRepoId   Int
-    githubApiKey   String
-    githubApiKeyIV String
     githubLabelId String
 
     LinearTeam     LinearTeam @relation(fields: [linearTeamId], references: [teamId])
     linearTeamId   String
-    linearApiKey   String
-    linearApiKeyIV String
     linearLabelId String
 
     label String

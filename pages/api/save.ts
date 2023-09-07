@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import prisma from "../../prisma";
-import { encrypt } from "../../utils";
 
 // POST /api/save
 export default async function handle(
@@ -55,14 +54,6 @@ export default async function handle(
             .send({ error: "Failed to save sync: missing github label id" });
     }
 
-    // Encrypt the API keys
-    const { hash: linearApiKey, initVector: linearApiKeyIV } = encrypt(
-        linear.apiKey
-    );
-    const { hash: githubApiKey, initVector: githubApiKeyIV } = encrypt(
-        github.apiKey
-    );
-
     try {
         await prisma.sync.upsert({
             where: {
@@ -74,11 +65,7 @@ export default async function handle(
                 }
             },
             update: {
-                githubApiKey,
-                githubApiKeyIV,
                 githubLabelId,
-                linearApiKey,
-                linearApiKeyIV,
                 linearLabelId,
                 label
             },
@@ -86,15 +73,11 @@ export default async function handle(
                 // GitHub
                 githubUserId: github.userId,
                 githubRepoId: github.repoId,
-                githubApiKey,
-                githubApiKeyIV,
                 githubLabelId,
 
                 // Linear
                 linearUserId: linear.userId,
                 linearTeamId: linear.teamId,
-                linearApiKey,
-                linearApiKeyIV,
                 linearLabelId,
 
                 label
